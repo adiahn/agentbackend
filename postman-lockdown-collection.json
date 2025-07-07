@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "V-Agent Lockdown System",
+    "description": "Complete Postman collection for testing the V-Agent lockdown system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('adminToken', response.token);",
+                  "    console.log('Admin token saved:', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🤖 Agent Management",
+      "item": [
+        {
+          "name": "Register Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hostname\": \"TEST-PC-001\",\n  \"platform\": \"win32\",\n  \"version\": \"10.0.19044\",\n  \"macAddress\": \"00:11:22:33:44:55\",\n  \"ipAddress\": \"192.168.1.100\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/agent/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agent", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('agentId', response.agent.agentId);",
+                  "    console.log('Agent ID saved:', response.agent.agentId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/my-agents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "my-agents"]
+            }
+          }
+        },
+        {
+          "name": "Report Agent Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"online\",\n  \"lastSeen\": \"{{$timestamp}}\",\n  \"systemInfo\": {\n    \"cpu\": \"Intel Core i7\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/agent/{{agentId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agent", "{{agentId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 Lockdown System",
+      "item": [
+        {
+          "name": "Initiate Lockdown",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adminContactInfo\": {\n    \"name\": \"John Administrator\",\n    \"phone\": \"+1-555-0123\",\n    \"email\": \"admin@company.com\",\n    \"message\": \"Your system has been locked down for security reasons. Please contact IT immediately.\"\n  },\n  \"reason\": \"Security incident detected - unauthorized access attempt\",\n  \"priority\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/lockdown/agent/{{agentId}}/lockdown",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lockdown", "agent", "{{agentId}}", "lockdown"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('Lockdown initiated successfully');",
+                  "    const response = pm.response.json();",
+                  "    console.log('Command ID:', response.command.id);",
+                  "    console.log('Lockdown ID:', response.lockdown.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Lockdown Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lockdown/agent/{{agentId}}/lockdown-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lockdown", "agent", "{{agentId}}", "lockdown-status"]
+            }
+          }
+        },
+        {
+          "name": "Get All Locked Agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/lockdown/my-locked-agents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lockdown", "my-locked-agents"]
+            }
+          }
+        },
+        {
+          "name": "Update Lockdown Heartbeat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"systemInfo\": {\n    \"hostname\": \"TEST-PC-001\",\n    \"platform\": \"win32\",\n    \"version\": \"10.0.19044\",\n    \"lastBootTime\": \"{{$timestamp}}\"\n  },\n  \"securityChecks\": {\n    \"registryTampered\": false,\n    \"processKilled\": false,\n    \"networkDisconnected\": false,\n    \"lastCheckTime\": \"{{$timestamp}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/lockdown/agent/{{agentId}}/lockdown/heartbeat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lockdown", "agent", "{{agentId}}", "lockdown", "heartbeat"]
+            }
+          }
+        },
+        {
+          "name": "Release Lockdown",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Security incident resolved - lockdown released\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/lockdown/agent/{{agentId}}/unlockdown",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "lockdown", "agent", "{{agentId}}", "unlockdown"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('Lockdown released successfully');",
+                  "    const response = pm.response.json();",
+                  "    console.log('Unlockdown command ID:', response.command.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📋 Command System",
+      "item": [
+        {
+          "name": "Get Pending Commands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/agent/{{agentId}}/commands",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agent", "{{agentId}}", "commands"]
+            }
+          }
+        },
+        {
+          "name": "Complete Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\",\n  \"result\": {\n    \"lockdownTime\": \"{{$timestamp}}\",\n    \"method\": \"system_lockdown\",\n    \"success\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/agent/{{agentId}}/command/{{commandId}}/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agent", "{{agentId}}", "command", "{{commandId}}", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Get My Commands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/my-commands?status=completed&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "my-commands"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "completed"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔍 System Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Database Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 

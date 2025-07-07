@@ -1,0 +1,428 @@
+{
+  "info": {
+    "name": "V-Agent Server API",
+    "description": "Complete API collection for V-Agent server with admin authentication, activation codes, and agent management",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "jwtToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activationCodeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwtToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": ["{{baseUrl}}"],
+          "path": [""]
+        },
+        "description": "Check if the server is running and get version information"
+      }
+    },
+    {
+      "name": "Admin Authentication",
+      "item": [
+        {
+          "name": "Create Super Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"superadmin\",\n  \"email\": \"admin@v-agent.com\",\n  \"password\": \"admin123456\",\n  \"role\": \"super_admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "register"]
+            },
+            "description": "Create the first super admin account (only works if no super admin exists)"
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwtToken', response.token);",
+                  "    pm.collectionVariables.set('adminId', response.admin._id);",
+                  "    console.log('JWT Token saved:', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@v-agent.com\",\n  \"password\": \"admin123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "login"]
+            },
+            "description": "Login as admin and get JWT token"
+          }
+        },
+        {
+          "name": "Get Admin Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "profile"]
+            },
+            "description": "Get current admin profile (requires authentication)"
+          }
+        },
+        {
+          "name": "Update Admin Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"updated_admin\",\n  \"email\": \"updated@v-agent.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "profile"]
+            },
+            "description": "Update admin profile information"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123456\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "change-password"]
+            },
+            "description": "Change admin password"
+          }
+        },
+        {
+          "name": "Get All Admins (Super Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "all"]
+            },
+            "description": "Get all admin accounts (super admin only)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activation Codes",
+      "item": [
+        {
+          "name": "Generate Activation Codes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.codes && response.codes.length > 0) {",
+                  "        pm.collectionVariables.set('activationCodeId', response.codes[0].id);",
+                  "        console.log('Activation Code ID saved:', response.codes[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"count\": 3,\n  \"expiresInDays\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/activation/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activation", "generate"]
+            },
+            "description": "Generate activation codes for agent registration"
+          }
+        },
+        {
+          "name": "Get My Activation Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activation/my-codes?page=1&limit=10&status=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activation", "my-codes"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            },
+            "description": "Get admin's activation codes with pagination and filtering"
+          }
+        },
+        {
+          "name": "Get Specific Activation Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activation/code/{{activationCodeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activation", "code", "{{activationCodeId}}"]
+            },
+            "description": "Get details of a specific activation code"
+          }
+        },
+        {
+          "name": "Deactivate Activation Code",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activation/deactivate/{{activationCodeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activation", "deactivate", "{{activationCodeId}}"]
+            },
+            "description": "Deactivate an unused activation code"
+          }
+        },
+        {
+          "name": "Use Activation Code (Agent Registration)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('agentId', response.agent.agentId);",
+                  "    console.log('Agent ID saved:', response.agent.agentId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ABC12345\",\n  \"agentId\": \"agent_001\",\n  \"systemInfo\": {\n    \"os\": \"Windows 10\",\n    \"version\": \"10.0.19044\",\n    \"architecture\": \"x64\",\n    \"hostname\": \"DESKTOP-ABC123\",\n    \"cpu\": \"Intel Core i7-8700K\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\"\n  },\n  \"location\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060,\n    \"city\": \"New York\",\n    \"country\": \"USA\",\n    \"timezone\": \"America/New_York\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/activation/use",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activation", "use"]
+            },
+            "description": "Use activation code to register a new agent (public endpoint)"
+          }
+        },
+        {
+          "name": "Get All Activation Codes (Super Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activation/all?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "activation", "all"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all activation codes (super admin only)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agent Management",
+      "item": [
+        {
+          "name": "Report Agent Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agentId\": \"{{agentId}}\",\n  \"systemInfo\": {\n    \"os\": \"Windows 10\",\n    \"version\": \"10.0.19044\",\n    \"architecture\": \"x64\",\n    \"hostname\": \"DESKTOP-ABC123\",\n    \"cpu\": \"Intel Core i7-8700K\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\",\n    \"uptime\": 86400,\n    \"load\": 0.5\n  },\n  \"location\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060,\n    \"city\": \"New York\",\n    \"country\": \"USA\",\n    \"timezone\": \"America/New_York\",\n    \"timestamp\": \"2024-01-15T10:30:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/agent/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agent", "report"]
+            },
+            "description": "Report agent status and location (public endpoint)"
+          }
+        },
+        {
+          "name": "Get My Agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/my-agents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "my-agents"]
+            },
+            "description": "Get all agents belonging to the authenticated admin"
+          }
+        },
+        {
+          "name": "Get Specific Agent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/agent/{{agentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agent", "{{agentId}}"]
+            },
+            "description": "Get details of a specific agent"
+          }
+        },
+        {
+          "name": "Deactivate Agent",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/deactivate/{{agentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "deactivate", "{{agentId}}"]
+            },
+            "description": "Deactivate an agent"
+          }
+        },
+        {
+          "name": "Get All Agents (Super Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/agents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "agents"]
+            },
+            "description": "Get all agents in the system (super admin only)"
+          }
+        }
+      ]
+    }
+  ]
+} 
