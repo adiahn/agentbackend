@@ -10,6 +10,8 @@ The enhanced lockdown system now includes **4-digit PIN control** that allows ad
 - **PIN Verification**: Real-time PIN validation
 - **Secure Unlocking**: Only the correct PIN can unlock the system
 - **PIN Management**: Admins can set/change PIN during lockdown
+- **Real-time Status Monitoring**: Automatic UI updates when lockdown state changes
+- **Smart Button Management**: Lockdown button automatically disabled when system is locked
 
 ## 🌐 **Updated API Endpoints**
 
@@ -126,9 +128,52 @@ Content-Type: application/json
 
 ---
 
+## 📡 **4. Get Lockdown Status (Real-time Monitoring)**
+
+### **Endpoint**
+```http
+GET /api/lockdown/agent/:agentId/status
+Authorization: Bearer <jwt-token>
+```
+
+### **Response**
+```json
+{
+  "isLockedDown": true,
+  "agentId": "agent_001",
+  "lockdownInfo": {
+    "initiatedAt": "2024-01-01T12:00:00.000Z",
+    "reason": "Security incident detected",
+    "adminContactInfo": {
+      "name": "John Administrator",
+      "phone": "+1-555-0123",
+      "email": "admin@company.com",
+      "message": "Contact IT immediately"
+    },
+    "lastHeartbeat": "2024-01-01T12:30:00.000Z",
+    "securityChecks": {
+      "registryTampered": false,
+      "processKilled": false,
+      "networkDisconnected": false,
+      "lastCheckTime": "2024-01-01T12:30:00.000Z"
+    },
+    "expiresAt": "2024-01-02T12:00:00.000Z",
+    "isPersistent": true
+  },
+  "systemInfo": {
+    "hostname": "DESKTOP-ABC123",
+    "platform": "win32",
+    "version": "10.0.19044",
+    "lastBootTime": "2024-01-01T12:00:00.000Z"
+  }
+}
+```
+
+---
+
 ## 🎨 **Frontend Implementation**
 
-### **1. Enhanced Lockdown Service**
+### **1. Enhanced Lockdown Service with Real-time Monitoring**
 
 ```typescript
 // services/LockdownService.ts
@@ -145,7 +190,7 @@ interface LockdownRequest {
   adminContactInfo: AdminContactInfo;
   reason: string;
   priority?: number;
-  unlockPin?: string; // New field
+  unlockPin?: string;
 }
 
 interface LockdownResponse {
@@ -157,7 +202,7 @@ interface LockdownResponse {
     initiatedAt: string;
     reason: string;
     adminContactInfo: AdminContactInfo;
-    hasPin: boolean; // New field
+    hasPin: boolean;
   };
   command: {
     id: string;
@@ -168,6 +213,21 @@ interface LockdownResponse {
   };
 }
 
+interface LockdownStatus {
+  isLockedDown: boolean;
+  agentId: string;
+  lockdownInfo?: {
+    initiatedAt: string;
+    reason: string;
+    adminContactInfo: AdminContactInfo;
+    lastHeartbeat: string;
+    securityChecks: any;
+    expiresAt?: string;
+    isPersistent: boolean;
+  };
+  systemInfo?: any;
+}
+
 interface PinVerificationResponse {
   isValid: boolean;
   message: string;
@@ -176,6 +236,8 @@ interface PinVerificationResponse {
 class LockdownService {
   private baseURL: string;
   private token: string;
+  private statusPollingInterval: NodeJS.Timeout | null = null;
+  private statusCallbacks: ((status: LockdownStatus) => void)[] = [];
 
   constructor(baseURL: string, token: string) {
     this.baseURL = baseURL;
@@ -230,12 +292,59 @@ class LockdownService {
   }
 
   // Get lockdown status
-  async getLockdownStatus(agentId: string): Promise<any> {
+  async getLockdownStatus(agentId: string): Promise<LockdownStatus> {
     const response = await axios.get(
       `${this.baseURL}/api/lockdown/agent/${agentId}/status`,
       { headers: this.getHeaders() }
     );
     return response.data;
+  }
+
+  // Start real-time status monitoring
+  startStatusMonitoring(agentId: string, intervalMs: number = 5000) {
+    // Clear any existing polling
+    this.stopStatusMonitoring();
+
+    // Start polling
+    this.statusPollingInterval = setInterval(async () => {
+      try {
+        const status = await this.getLockdownStatus(agentId);
+        this.notifyStatusCallbacks(status);
+      } catch (error) {
+        console.error('Failed to get lockdown status:', error);
+      }
+    }, intervalMs);
+
+    // Get initial status immediately
+    this.getLockdownStatus(agentId).then(status => {
+      this.notifyStatusCallbacks(status);
+    }).catch(error => {
+      console.error('Failed to get initial lockdown status:', error);
+    });
+  }
+
+  // Stop real-time status monitoring
+  stopStatusMonitoring() {
+    if (this.statusPollingInterval) {
+      clearInterval(this.statusPollingInterval);
+      this.statusPollingInterval = null;
+    }
+  }
+
+  // Subscribe to status updates
+  onStatusUpdate(callback: (status: LockdownStatus) => void) {
+    this.statusCallbacks.push(callback);
+    return () => {
+      const index = this.statusCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.statusCallbacks.splice(index, 1);
+      }
+    };
+  }
+
+  // Notify all status callbacks
+  private notifyStatusCallbacks(status: LockdownStatus) {
+    this.statusCallbacks.forEach(callback => callback(status));
   }
 
   // Get all lockdowns (super admin only)
@@ -256,11 +365,11 @@ class LockdownService {
 export default LockdownService;
 ```
 
-### **2. Enhanced Lockdown Control Component**
+### **2. Enhanced Lockdown Control Component with Real-time Monitoring**
 
 ```typescript
 // components/LockdownControl.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import LockdownService from '../services/LockdownService';
 
 interface LockdownControlProps {
@@ -283,6 +392,7 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lockdownInfo, setLockdownInfo] = useState<any>(null);
+  const [lastStatusUpdate, setLastStatusUpdate] = useState<Date | null>(null);
   
   // PIN-related state
   const [showPinInput, setShowPinInput] = useState(false);
@@ -290,24 +400,38 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
 
-  // Load current lockdown status
-  useEffect(() => {
-    loadLockdownStatus();
-  }, [agentId]);
+  // Status update callback
+  const handleStatusUpdate = useCallback((status: any) => {
+    console.log('Lockdown status updated:', status);
+    setIsLockedDown(status.isLockedDown);
+    setLockdownInfo(status.lockdownInfo);
+    setLastStatusUpdate(new Date());
+    setError(null); // Clear any previous errors
+  }, []);
 
-  const loadLockdownStatus = async () => {
-    try {
-      const status = await lockdownService.getLockdownStatus(agentId);
-      setIsLockedDown(status.isLockedDown);
-      setLockdownInfo(status.lockdownInfo);
-    } catch (err) {
-      console.error('Error loading lockdown status:', err);
-    }
-  };
+  // Start monitoring on component mount
+  useEffect(() => {
+    // Subscribe to status updates
+    const unsubscribe = lockdownService.onStatusUpdate(handleStatusUpdate);
+    
+    // Start real-time monitoring
+    lockdownService.startStatusMonitoring(agentId, 3000); // Check every 3 seconds
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribe();
+      lockdownService.stopStatusMonitoring();
+    };
+  }, [agentId, lockdownService, handleStatusUpdate]);
 
   const handleInitiateLockdown = async () => {
     if (!isAdmin) {
       setError('Only administrators can initiate lockdown');
+      return;
+    }
+
+    if (isLockedDown) {
+      setError('System is already in lockdown mode');
       return;
     }
 
@@ -329,16 +453,13 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
         adminContactInfo,
         reason: "Administrative lockdown initiated",
         priority: 10,
-        unlockPin: pin || undefined // Only include if PIN was provided
+        unlockPin: pin || undefined
       };
 
-      const response = await lockdownService.initiateLockdown(agentId, request);
+      await lockdownService.initiateLockdown(agentId, request);
       
-      setIsLockedDown(true);
-      setLockdownInfo(response.lockdown);
-      
-      const pinMessage = response.lockdown.hasPin ? ' with PIN protection' : '';
-      alert(`Lockdown initiated successfully on ${agentName}${pinMessage}`);
+      // Status will be updated automatically via polling
+      alert(`Lockdown initiated successfully on ${agentName}`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to initiate lockdown');
     } finally {
@@ -358,12 +479,32 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
     try {
       await lockdownService.releaseLockdown(agentId, "Administrative release");
       
-      setIsLockedDown(false);
-      setLockdownInfo(null);
-      
+      // Status will be updated automatically via polling
       alert(`Lockdown released successfully on ${agentName}`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to release lockdown');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmergencyOverride = async () => {
+    if (!isAdmin) {
+      setError('Only administrators can perform emergency override');
+      return;
+    }
+
+    const confirmed = confirm('Are you sure you want to perform emergency override? This will unlock the system immediately.');
+    if (!confirmed) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await lockdownService.emergencyOverride(agentId, "Emergency override executed by admin");
+      alert(`Emergency override executed successfully on ${agentName}`);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to execute emergency override');
     } finally {
       setLoading(false);
     }
@@ -407,11 +548,9 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
     try {
       await lockdownService.unlockWithPin(agentId, unlockPin);
       
-      setIsLockedDown(false);
-      setLockdownInfo(null);
+      // Status will be updated automatically via polling
       setShowPinInput(false);
       setUnlockPin('');
-      
       alert(`System unlocked successfully on ${agentName}`);
     } catch (err: any) {
       setPinError(err.response?.data?.error || 'Failed to unlock system');
@@ -424,19 +563,29 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
     <div className="lockdown-control">
       <h3>🔐 Enhanced Lockdown Control - {agentName}</h3>
       
+      {/* Real-time Status Indicator */}
       <div className="status-section">
         <h4>Current Status</h4>
         <div className={`status-indicator ${isLockedDown ? 'locked' : 'unlocked'}`}>
           {isLockedDown ? '🚨 LOCKED DOWN' : '✅ UNLOCKED'}
         </div>
         
+        {lastStatusUpdate && (
+          <div className="status-timestamp">
+            Last updated: {lastStatusUpdate.toLocaleTimeString()}
+          </div>
+        )}
+        
         {lockdownInfo && (
           <div className="lockdown-details">
             <p><strong>Reason:</strong> {lockdownInfo.reason}</p>
             <p><strong>Initiated:</strong> {new Date(lockdownInfo.initiatedAt).toLocaleString()}</p>
             <p><strong>Contact:</strong> {lockdownInfo.adminContactInfo.name} - {lockdownInfo.adminContactInfo.phone}</p>
-            {lockdownInfo.hasPin && (
-              <p><strong>🔐 PIN Protection:</strong> Enabled</p>
+            {lockdownInfo.expiresAt && (
+              <p><strong>Expires:</strong> {new Date(lockdownInfo.expiresAt).toLocaleString()}</p>
+            )}
+            {lockdownInfo.isPersistent && (
+              <p><strong>🔒 Persistent Lockdown:</strong> Will survive system restarts</p>
             )}
           </div>
         )}
@@ -462,19 +611,29 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
         ) : (
           <div className="unlock-options">
             {isAdmin && (
-              <button
-                onClick={handleReleaseLockdown}
-                disabled={loading}
-                className="btn btn-success"
-              >
-                {loading ? 'Releasing...' : '🔓 Admin Release'}
-              </button>
+              <>
+                <button
+                  onClick={handleReleaseLockdown}
+                  disabled={loading}
+                  className="btn btn-success"
+                >
+                  {loading ? 'Releasing...' : '🔓 Admin Release'}
+                </button>
+                
+                <button
+                  onClick={handleEmergencyOverride}
+                  disabled={loading}
+                  className="btn btn-warning"
+                >
+                  {loading ? 'Overriding...' : '🚨 Emergency Override'}
+                </button>
+              </>
             )}
             
             <button
               onClick={() => setShowPinInput(!showPinInput)}
               disabled={loading}
-              className="btn btn-warning"
+              className="btn btn-info"
             >
               🔐 Unlock with PIN
             </button>
@@ -482,7 +641,7 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
         )}
 
         <button
-          onClick={loadLockdownStatus}
+          onClick={() => lockdownService.getLockdownStatus(agentId).then(handleStatusUpdate)}
           disabled={loading}
           className="btn btn-secondary"
         >
@@ -547,9 +706,10 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
         <div className="alert alert-warning">
           <strong>⚠️ Enhanced Security:</strong> 
           <ul>
-            <li>Lockdown with PIN protection requires the exact PIN to unlock</li>
-            <li>Only the admin-set PIN will work during lockdown</li>
-            <li>PIN is cleared when lockdown is released</li>
+            <li>Real-time status monitoring updates UI automatically</li>
+            <li>Lockdown button is disabled when system is locked</li>
+            <li>PIN protection requires exact PIN to unlock</li>
+            <li>Emergency override bypasses PIN verification</li>
             <li>Use only for critical security incidents</li>
           </ul>
         </div>
@@ -561,143 +721,216 @@ const LockdownControl: React.FC<LockdownControlProps> = ({
 export default LockdownControl;
 ```
 
-### **3. PIN Input Component**
+### **3. Lockdown Status Hook (Custom Hook)**
 
 ```typescript
-// components/PinInput.tsx
-import React, { useState, useRef, useEffect } from 'react';
+// hooks/useLockdownStatus.ts
+import { useState, useEffect, useCallback } from 'react';
+import LockdownService from '../services/LockdownService';
 
-interface PinInputProps {
-  length: number;
-  onComplete: (pin: string) => void;
-  onCancel: () => void;
-  title?: string;
-  loading?: boolean;
+interface UseLockdownStatusProps {
+  agentId: string;
+  baseURL: string;
+  token: string;
+  pollingInterval?: number;
 }
 
-const PinInput: React.FC<PinInputProps> = ({
-  length = 4,
-  onComplete,
-  onCancel,
-  title = "Enter PIN",
-  loading = false
-}) => {
-  const [pin, setPin] = useState<string[]>(new Array(length).fill(''));
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+export const useLockdownStatus = ({ 
+  agentId, 
+  baseURL, 
+  token, 
+  pollingInterval = 3000 
+}: UseLockdownStatusProps) => {
+  const [lockdownService] = useState(() => new LockdownService(baseURL, token));
+  const [isLockedDown, setIsLockedDown] = useState(false);
+  const [lockdownInfo, setLockdownInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  const handleStatusUpdate = useCallback((status: any) => {
+    setIsLockedDown(status.isLockedDown);
+    setLockdownInfo(status.lockdownInfo);
+    setLastUpdate(new Date());
+    setLoading(false);
+    setError(null);
+  }, []);
 
   useEffect(() => {
-    if (inputRefs.current[currentIndex]) {
-      inputRefs.current[currentIndex]?.focus();
+    // Subscribe to status updates
+    const unsubscribe = lockdownService.onStatusUpdate(handleStatusUpdate);
+    
+    // Start real-time monitoring
+    lockdownService.startStatusMonitoring(agentId, pollingInterval);
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribe();
+      lockdownService.stopStatusMonitoring();
+    };
+  }, [agentId, lockdownService, handleStatusUpdate, pollingInterval]);
+
+  const refreshStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      const status = await lockdownService.getLockdownStatus(agentId);
+      handleStatusUpdate(status);
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh status');
+      setLoading(false);
     }
-  }, [currentIndex]);
+  }, [agentId, lockdownService, handleStatusUpdate]);
 
-  const handleChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
+  return {
+    isLockedDown,
+    lockdownInfo,
+    loading,
+    error,
+    lastUpdate,
+    refreshStatus
+  };
+};
+```
 
-    const newPin = [...pin];
-    newPin[index] = value;
-    setPin(newPin);
+### **4. Simplified Component Using the Hook**
 
-    // Move to next input if value entered
-    if (value && index < length - 1) {
-      setCurrentIndex(index + 1);
-    }
+```typescript
+// components/SimpleLockdownControl.tsx
+import React, { useState } from 'react';
+import { useLockdownStatus } from '../hooks/useLockdownStatus';
+import LockdownService from '../services/LockdownService';
 
-    // Check if PIN is complete
-    if (newPin.every(digit => digit !== '') && index === length - 1) {
-      onComplete(newPin.join(''));
+interface SimpleLockdownControlProps {
+  agentId: string;
+  agentName: string;
+  isAdmin: boolean;
+  baseURL: string;
+  token: string;
+}
+
+const SimpleLockdownControl: React.FC<SimpleLockdownControlProps> = ({
+  agentId,
+  agentName,
+  isAdmin,
+  baseURL,
+  token
+}) => {
+  const { isLockedDown, lockdownInfo, loading, error, refreshStatus } = useLockdownStatus({
+    agentId,
+    baseURL,
+    token,
+    pollingInterval: 3000
+  });
+
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const lockdownService = new LockdownService(baseURL, token);
+
+  const handleInitiateLockdown = async () => {
+    if (!isAdmin || isLockedDown) return;
+
+    setActionLoading(true);
+    setActionError(null);
+
+    try {
+      const adminContactInfo = {
+        name: "System Administrator",
+        phone: "+1-555-0123",
+        email: "admin@company.com",
+        message: "Your system has been locked down for security reasons."
+      };
+
+      await lockdownService.initiateLockdown(agentId, {
+        adminContactInfo,
+        reason: "Administrative lockdown initiated",
+        priority: 10
+      });
+
+      alert(`Lockdown initiated successfully on ${agentName}`);
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to initiate lockdown');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace') {
-      if (pin[index] === '') {
-        // Move to previous input if current is empty
-        if (index > 0) {
-          setCurrentIndex(index - 1);
-          const newPin = [...pin];
-          newPin[index - 1] = '';
-          setPin(newPin);
-        }
-      } else {
-        // Clear current input
-        const newPin = [...pin];
-        newPin[index] = '';
-        setPin(newPin);
-      }
+  const handleReleaseLockdown = async () => {
+    if (!isAdmin || !isLockedDown) return;
+
+    setActionLoading(true);
+    setActionError(null);
+
+    try {
+      await lockdownService.releaseLockdown(agentId, "Administrative release");
+      alert(`Lockdown released successfully on ${agentName}`);
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to release lockdown');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text/plain').replace(/\D/g, '');
-    if (pastedData.length === length) {
-      const newPin = pastedData.split('').slice(0, length);
-      setPin(newPin);
-      onComplete(newPin.join(''));
-    }
-  };
+  if (loading) {
+    return <div>Loading lockdown status...</div>;
+  }
 
   return (
-    <div className="pin-input-modal">
-      <div className="pin-input-container">
-        <h3>{title}</h3>
-        
-        <div className="pin-inputs">
-          {pin.map((digit, index) => (
-            <input
-              key={index}
-              ref={(ref) => (inputRefs.current[index] = ref)}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleChange(index, e.target.value.replace(/\D/g, ''))}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              onPaste={handlePaste}
-              onFocus={() => setCurrentIndex(index)}
-              className={`pin-digit ${currentIndex === index ? 'focused' : ''}`}
-              disabled={loading}
-            />
-          ))}
-        </div>
+    <div className="simple-lockdown-control">
+      <h3>🔐 Lockdown Control - {agentName}</h3>
+      
+      <div className={`status ${isLockedDown ? 'locked' : 'unlocked'}`}>
+        {isLockedDown ? '🚨 LOCKED DOWN' : '✅ UNLOCKED'}
+      </div>
 
-        <div className="pin-actions">
-          <button
-            onClick={() => onComplete(pin.join(''))}
-            disabled={loading || pin.some(digit => digit === '')}
-            className="btn btn-primary"
-          >
-            {loading ? 'Verifying...' : 'Submit'}
-          </button>
-          
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="btn btn-secondary"
-          >
-            Cancel
-          </button>
-        </div>
+      {error && <div className="error">{error}</div>}
+      {actionError && <div className="error">{actionError}</div>}
 
-        <div className="pin-instructions">
-          <p>Enter the 4-digit PIN to unlock the system</p>
-          <p>Only the admin-set PIN will work during lockdown</p>
+      {lockdownInfo && (
+        <div className="lockdown-details">
+          <p><strong>Reason:</strong> {lockdownInfo.reason}</p>
+          <p><strong>Initiated:</strong> {new Date(lockdownInfo.initiatedAt).toLocaleString()}</p>
         </div>
+      )}
+
+      <div className="actions">
+        {!isLockedDown ? (
+          <button
+            onClick={handleInitiateLockdown}
+            disabled={actionLoading || !isAdmin}
+            className="btn btn-danger"
+          >
+            {actionLoading ? 'Initiating...' : '🚨 Initiate Lockdown'}
+          </button>
+        ) : (
+          <button
+            onClick={handleReleaseLockdown}
+            disabled={actionLoading || !isAdmin}
+            className="btn btn-success"
+          >
+            {actionLoading ? 'Releasing...' : '🔓 Release Lockdown'}
+          </button>
+        )}
+
+        <button
+          onClick={refreshStatus}
+          disabled={actionLoading}
+          className="btn btn-secondary"
+        >
+          🔄 Refresh
+        </button>
       </div>
     </div>
   );
 };
 
-export default PinInput;
+export default SimpleLockdownControl;
 ```
 
-### **4. Enhanced CSS Styles**
+### **5. CSS Styles for Enhanced UI**
 
 ```css
-/* styles/enhanced-lockdown.css */
+/* styles/LockdownControl.css */
 .lockdown-control {
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -711,41 +944,86 @@ export default PinInput;
 }
 
 .status-indicator {
-  padding: 10px 15px;
+  display: inline-block;
+  padding: 10px 20px;
   border-radius: 5px;
   font-weight: bold;
-  text-align: center;
+  font-size: 16px;
   margin: 10px 0;
 }
 
 .status-indicator.locked {
-  background: linear-gradient(135deg, #dc3545, #c82333);
+  background: #ff4444;
   color: white;
-  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
 }
 
 .status-indicator.unlocked {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: #44ff44;
   color: white;
-  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.status-timestamp {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
 }
 
 .lockdown-details {
   background: #fff;
   padding: 15px;
   border-radius: 5px;
-  border-left: 4px solid #007bff;
   margin: 10px 0;
+  border-left: 4px solid #ff4444;
 }
 
 .actions-section {
-  margin: 20px 0;
+  margin-top: 20px;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+  border: 1px solid #ffcdd2;
 }
 
 .unlock-options {
   display: flex;
   gap: 10px;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.pin-section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  margin: 20px 0;
+  border: 2px solid #2196f3;
+}
+
+.pin-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pin-input {
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 5px;
+  width: 200px;
+}
+
+.pin-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -753,155 +1031,38 @@ export default PinInput;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  margin-right: 10px;
   font-weight: bold;
   transition: all 0.3s ease;
-}
-
-.btn-danger {
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-}
-
-.btn-warning {
-  background: linear-gradient(135deg, #ffc107, #e0a800);
-  color: #212529;
-}
-
-.btn-info {
-  background: linear-gradient(135deg, #17a2b8, #138496);
-  color: white;
-}
-
-.btn-secondary {
-  background: linear-gradient(135deg, #6c757d, #5a6268);
-  color: white;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
-.pin-section {
-  background: #fff;
-  border: 2px solid #007bff;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
+.btn-danger {
+  background: #f44336;
+  color: white;
 }
 
-.pin-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+.btn-success {
+  background: #4caf50;
+  color: white;
 }
 
-.pin-input {
-  padding: 12px;
-  border: 2px solid #ddd;
-  border-radius: 5px;
-  font-size: 18px;
-  text-align: center;
-  letter-spacing: 2px;
-  width: 200px;
-  margin: 0 auto;
+.btn-warning {
+  background: #ff9800;
+  color: white;
 }
 
-.pin-input:focus {
-  border-color: #007bff;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+.btn-info {
+  background: #2196f3;
+  color: white;
 }
 
-.pin-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.pin-input-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.pin-input-container {
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  text-align: center;
-  max-width: 400px;
-  width: 90%;
-}
-
-.pin-inputs {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.pin-digit {
-  width: 50px;
-  height: 50px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  font-size: 20px;
-  text-align: center;
-  font-weight: bold;
-}
-
-.pin-digit.focused {
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-}
-
-.pin-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.pin-instructions {
-  color: #666;
-  font-size: 14px;
-  margin-top: 15px;
-}
-
-.pin-instructions p {
-  margin: 5px 0;
-}
-
-.error-message {
-  background: #f8d7da;
-  color: #721c24;
-  padding: 10px;
-  border-radius: 5px;
-  margin: 10px 0;
-  border: 1px solid #f5c6cb;
+.btn-secondary {
+  background: #9e9e9e;
+  color: white;
 }
 
 .warning-section {
@@ -916,17 +1077,47 @@ export default PinInput;
 
 .alert-warning {
   background: #fff3cd;
-  color: #856404;
   border: 1px solid #ffeaa7;
+  color: #856404;
 }
 
-.alert-warning ul {
+.simple-lockdown-control {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.status {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: bold;
   margin: 10px 0;
-  padding-left: 20px;
 }
 
-.alert-warning li {
-  margin: 5px 0;
+.status.locked {
+  background: #ff4444;
+  color: white;
+}
+
+.status.unlocked {
+  background: #44ff44;
+  color: white;
+}
+
+.error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
 }
 ```
 
@@ -936,10 +1127,19 @@ export default PinInput;
 ```typescript
 // App.tsx or main component
 import LockdownControl from './components/LockdownControl';
-import PinInput from './components/PinInput';
+import SimpleLockdownControl from './components/SimpleLockdownControl';
 
 // In your component
 <LockdownControl
+  agentId="agent_001"
+  agentName="Office PC 1"
+  isAdmin={userRole === 'admin' || userRole === 'super_admin'}
+  baseURL="http://localhost:4000"
+  token={userToken}
+/>
+
+// Or use the simplified version
+<SimpleLockdownControl
   agentId="agent_001"
   agentName="Office PC 1"
   isAdmin={userRole === 'admin' || userRole === 'super_admin'}
@@ -959,20 +1159,23 @@ export const API_CONFIG = {
 
 ## 🧪 **Testing Checklist**
 
-- [ ] **Initiate lockdown with PIN** on a test agent
-- [ ] **Verify PIN validation** works correctly
-- [ ] **Test PIN unlocking** with correct PIN
-- [ ] **Test PIN unlocking** with incorrect PIN
-- [ ] **Verify admin release** still works
-- [ ] **Check PIN clearing** when lockdown is released
-- [ ] **Test PIN input component** functionality
+- [ ] **Real-time status updates** work correctly
+- [ ] **Lockdown button is disabled** when system is locked
+- [ ] **Button re-enables** when lockdown is released
+- [ ] **Status polling** updates UI automatically
+- [ ] **Error handling** works for network issues
+- [ ] **PIN functionality** works as expected
+- [ ] **Emergency override** bypasses PIN
+- [ ] **Admin release** works properly
+- [ ] **Component cleanup** stops polling on unmount
 
 ## 🔒 **Security Notes**
 
-1. **PIN Storage**: PINs are stored securely in the database
-2. **PIN Validation**: Server-side validation ensures 4-digit format
-3. **PIN Clearing**: PINs are automatically cleared when lockdown is released
-4. **Access Control**: Only admins can set PINs, but anyone can attempt to unlock
-5. **Audit Trail**: All PIN attempts are logged for security monitoring
+1. **Real-time Monitoring**: Status is checked every 3 seconds
+2. **Automatic UI Updates**: No manual refresh needed
+3. **Smart Button Management**: Prevents duplicate lockdown attempts
+4. **Error Handling**: Graceful handling of network issues
+5. **Cleanup**: Proper cleanup of polling intervals
+6. **Audit Trail**: All actions are logged for security monitoring
 
-The enhanced lockdown system with PIN control is now ready for frontend integration! 🎉 
+The enhanced lockdown system with real-time monitoring is now ready for frontend integration! 🎉 

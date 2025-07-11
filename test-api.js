@@ -24,11 +24,22 @@ const testConfig = {
       disk: '1TB SSD'
     },
     location: {
-      latitude: 40.7128,
-      longitude: -74.0060,
-      city: 'New York',
-      country: 'USA',
-      timezone: 'America/New_York'
+      coordinates: {
+        latitude: 40.7128,
+        longitude: -74.0060
+      },
+      address: {
+        street: '123 Main Street',
+        city: 'New York',
+        state: 'New York',
+        country: 'USA',
+        postalCode: '10001',
+        formattedAddress: '123 Main Street, New York, New York, USA'
+      },
+      timezone: 'America/New_York',
+      accuracy: 'high',
+      source: 'ip-geolocation + reverse-geocoding',
+      lastUpdated: '2024-01-15T10:30:00.000Z'
     }
   }
 };

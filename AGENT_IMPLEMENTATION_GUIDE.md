@@ -389,11 +389,22 @@ class VAgent {
         };
 
         const location = {
-          // You can implement IP-based location detection here
-          latitude: 0,
-          longitude: 0,
-          city: 'Unknown',
-          country: 'Unknown'
+          coordinates: {
+            latitude: 0,
+            longitude: 0
+          },
+          address: {
+            street: 'Unknown',
+            city: 'Unknown',
+            state: 'Unknown',
+            country: 'Unknown',
+            postalCode: 'Unknown',
+            formattedAddress: 'Unknown'
+          },
+          timezone: 'UTC',
+          accuracy: 'unknown',
+          source: 'ip-geolocation + reverse-geocoding',
+          lastUpdated: new Date().toISOString()
         };
 
         await axios.post(`${this.serverUrl}/api/agent/report`, {

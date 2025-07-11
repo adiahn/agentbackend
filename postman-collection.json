@@ -310,7 +310,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"ABC12345\",\n  \"agentId\": \"agent_001\",\n  \"systemInfo\": {\n    \"os\": \"Windows 10\",\n    \"version\": \"10.0.19044\",\n    \"architecture\": \"x64\",\n    \"hostname\": \"DESKTOP-ABC123\",\n    \"cpu\": \"Intel Core i7-8700K\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\"\n  },\n  \"location\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060,\n    \"city\": \"New York\",\n    \"country\": \"USA\",\n    \"timezone\": \"America/New_York\"\n  }\n}"
+              "raw": "{\n  \"code\": \"ABC12345\",\n  \"agentId\": \"agent_001\",\n  \"systemInfo\": {\n    \"os\": \"Windows 10\",\n    \"version\": \"10.0.19044\",\n    \"architecture\": \"x64\",\n    \"hostname\": \"DESKTOP-ABC123\",\n    \"cpu\": \"Intel Core i7-8700K\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\"\n  },\n  \"location\": {\n    \"coordinates\": {\n      \"latitude\": 40.7128,\n      \"longitude\": -74.0060\n    },\n    \"address\": {\n      \"street\": \"123 Main Street\",\n      \"city\": \"New York\",\n      \"state\": \"New York\",\n      \"country\": \"USA\",\n      \"postalCode\": \"10001\",\n      \"formattedAddress\": \"123 Main Street, New York, New York, USA\"\n    },\n    \"timezone\": \"America/New_York\",\n    \"accuracy\": \"high\",\n    \"source\": \"ip-geolocation + reverse-geocoding\",\n    \"lastUpdated\": \"2024-01-15T10:30:00.000Z\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/activation/use",
@@ -360,7 +360,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"agentId\": \"{{agentId}}\",\n  \"systemInfo\": {\n    \"os\": \"Windows 10\",\n    \"version\": \"10.0.19044\",\n    \"architecture\": \"x64\",\n    \"hostname\": \"DESKTOP-ABC123\",\n    \"cpu\": \"Intel Core i7-8700K\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\",\n    \"uptime\": 86400,\n    \"load\": 0.5\n  },\n  \"location\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060,\n    \"city\": \"New York\",\n    \"country\": \"USA\",\n    \"timezone\": \"America/New_York\",\n    \"timestamp\": \"2024-01-15T10:30:00Z\"\n  }\n}"
+              "raw": "{\n  \"agentId\": \"{{agentId}}\",\n  \"systemInfo\": {\n    \"os\": \"Windows 10\",\n    \"version\": \"10.0.19044\",\n    \"architecture\": \"x64\",\n    \"hostname\": \"DESKTOP-ABC123\",\n    \"cpu\": \"Intel Core i7-8700K\",\n    \"memory\": \"16GB\",\n    \"disk\": \"1TB SSD\",\n    \"uptime\": 86400,\n    \"load\": 0.5\n  },\n  \"location\": {\n    \"coordinates\": {\n      \"latitude\": 40.7128,\n      \"longitude\": -74.0060\n    },\n    \"address\": {\n      \"street\": \"123 Main Street\",\n      \"city\": \"New York\",\n      \"state\": \"New York\",\n      \"country\": \"USA\",\n      \"postalCode\": \"10001\",\n      \"formattedAddress\": \"123 Main Street, New York, New York, USA\"\n    },\n    \"timezone\": \"America/New_York\",\n    \"accuracy\": \"high\",\n    \"source\": \"ip-geolocation + reverse-geocoding\",\n    \"lastUpdated\": \"2024-01-15T10:30:00.000Z\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/agent/report",

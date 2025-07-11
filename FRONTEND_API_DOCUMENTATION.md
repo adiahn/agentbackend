@@ -74,11 +74,22 @@ interface Agent {
     load?: number;
   };
   location: {
-    latitude?: number;
-    longitude?: number;
-    city?: string;
-    country?: string;
+    coordinates: {
+      latitude: number;
+      longitude: number;
+    };
+    address: {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+      formattedAddress?: string;
+    };
     timezone?: string;
+    accuracy?: string;
+    source?: string;
+    lastUpdated?: string;
   };
   createdAt: Date;
 }
