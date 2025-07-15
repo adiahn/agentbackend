@@ -47,6 +47,33 @@ app.get('/', (req, res) => {
   });
 });
 
+// API Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    message: 'SystemMonitor Backend API is running',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    endpoints: {
+      admin: '/api/admin',
+      agent: '/api/agent',
+      activation: '/api/activation',
+      command: '/api/command',
+      lockdown: '/api/lockdown'
+    },
+    features: [
+      'Admin Authentication',
+      'Activation Code Management',
+      'Agent Management',
+      'JWT Security',
+      'Enhanced Lockdown System with PIN',
+      'Persistent Lockdown State',
+      'Emergency Override',
+      'Audit Trail & History'
+    ]
+  });
+});
+
 // Schedule cleanup tasks
 const scheduleCleanup = () => {
   // Run cleanup every hour
