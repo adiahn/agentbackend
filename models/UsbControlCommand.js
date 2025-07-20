@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const CommandSchema = new mongoose.Schema({
+const UsbControlCommandSchema = new mongoose.Schema({
   commandId: { 
     type: String, 
     required: true, 
@@ -15,14 +15,15 @@ const CommandSchema = new mongoose.Schema({
     ref: 'Admin',
     required: true 
   },
-  type: { 
+  action: { 
     type: String, 
     required: true,
-    enum: ['shutdown', 'restart', 'sleep', 'hibernate', 'lock', 'unlock', 'lockdown', 'unlockdown', 'emergency_override', 'lockdown_status_update', 'usb_control']
+    enum: ['enable', 'disable']
   },
-  parameters: { 
-    type: Object, 
-    default: {} 
+  reason: { 
+    type: String, 
+    required: true,
+    trim: true
   },
   status: { 
     type: String, 
@@ -38,9 +39,6 @@ const CommandSchema = new mongoose.Schema({
   createdAt: { 
     type: Date, 
     default: Date.now 
-  },
-  scheduledFor: { 
-    type: Date 
   },
   executedAt: { 
     type: Date 
@@ -70,32 +68,25 @@ const CommandSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-CommandSchema.index({ agentId: 1, status: 1 });
-CommandSchema.index({ adminId: 1 });
-CommandSchema.index({ createdAt: 1 });
-CommandSchema.index({ scheduledFor: 1 });
-CommandSchema.index({ commandId: 1 });
+UsbControlCommandSchema.index({ agentId: 1, status: 1 });
+UsbControlCommandSchema.index({ adminId: 1 });
+UsbControlCommandSchema.index({ createdAt: 1 });
+UsbControlCommandSchema.index({ commandId: 1 });
 
 // Method to check if command is ready for execution
-CommandSchema.methods.isReadyForExecution = function() {
-  const now = new Date();
-  
-  // Check if command is pending and scheduled time has passed (if scheduled)
-  if (this.status !== 'pending') return false;
-  if (this.scheduledFor && this.scheduledFor > now) return false;
-  
-  return true;
+UsbControlCommandSchema.methods.isReadyForExecution = function() {
+  return this.status === 'pending';
 };
 
 // Method to mark command as executing
-CommandSchema.methods.markAsExecuting = function() {
+UsbControlCommandSchema.methods.markAsExecuting = function() {
   this.status = 'executing';
   this.executedAt = new Date();
   return this.save();
 };
 
 // Method to mark command as completed
-CommandSchema.methods.markAsCompleted = function(result = {}) {
+UsbControlCommandSchema.methods.markAsCompleted = function(result = {}) {
   this.status = 'completed';
   this.completedAt = new Date();
   this.result = result;
@@ -103,7 +94,7 @@ CommandSchema.methods.markAsCompleted = function(result = {}) {
 };
 
 // Method to mark command as failed
-CommandSchema.methods.markAsFailed = function(error = 'Unknown error') {
+UsbControlCommandSchema.methods.markAsFailed = function(error = 'Unknown error') {
   this.status = 'failed';
   this.completedAt = new Date();
   this.error = error;
@@ -112,13 +103,13 @@ CommandSchema.methods.markAsFailed = function(error = 'Unknown error') {
 };
 
 // Static method to generate unique command ID
-CommandSchema.statics.generateCommandId = function() {
+UsbControlCommandSchema.statics.generateCommandId = function() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let commandId = 'cmd-';
+  let commandId = 'usb-';
   for (let i = 0; i < 8; i++) {
     commandId += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return commandId;
 };
 
-module.exports = mongoose.model('Command', CommandSchema); 
+module.exports = mongoose.model('UsbControlCommand', UsbControlCommandSchema); 

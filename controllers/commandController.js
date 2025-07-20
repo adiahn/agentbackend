@@ -208,7 +208,7 @@ exports.sendCommand = async (req, res) => {
     } = req.body;
 
     // Validate command type
-    const validTypes = ['shutdown', 'restart', 'sleep', 'hibernate', 'lock', 'unlock'];
+    const validTypes = ['shutdown', 'restart', 'sleep', 'hibernate', 'lock', 'unlock', 'usb_control'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ 
         error: `Invalid command type. Must be one of: ${validTypes.join(', ')}` 
@@ -220,12 +220,30 @@ exports.sendCommand = async (req, res) => {
       return res.status(400).json({ error: 'Priority must be between 1 and 10' });
     }
 
-    // Process parameters for shutdown and restart commands
+    // Process parameters for different command types
     let processedParameters = { ...parameters };
     if (type === 'shutdown' || type === 'restart') {
       // Ensure delay parameter exists and defaults to 0
       processedParameters = {
         delay: parameters.delay !== undefined ? parameters.delay : 0
+      };
+    } else if (type === 'usb_control') {
+      // Validate usb_control parameters
+      if (!parameters.action || !['enable', 'disable'].includes(parameters.action)) {
+        return res.status(400).json({ error: 'USB control action must be "enable" or "disable"' });
+      }
+      if (!parameters.reason || parameters.reason.trim().length === 0) {
+        return res.status(400).json({ error: 'USB control reason is required' });
+      }
+      if (!parameters.adminId) {
+        return res.status(400).json({ error: 'USB control adminId is required' });
+      }
+      
+      // Process usb_control parameters
+      processedParameters = {
+        action: parameters.action,
+        reason: parameters.reason.trim(),
+        adminId: parameters.adminId
       };
     }
 

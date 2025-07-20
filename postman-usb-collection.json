@@ -1,0 +1,343 @@
+{
+  "info": {
+    "name": "USB Control System",
+    "description": "Collection for testing USB control functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "test-agent-123",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Admin Authentication",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('adminToken', response.token);",
+                  "    console.log('Admin token set:', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "USB Control Commands",
+      "item": [
+        {
+          "name": "Send USB Disable Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"disable\",\n  \"reason\": \"Security lockdown - unauthorized device detected\",\n  \"priority\": 1,\n  \"timeout\": 300000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command"]
+            }
+          }
+        },
+        {
+          "name": "Send USB Enable Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"enable\",\n  \"reason\": \"Security clearance granted - re-enabling USB access\",\n  \"priority\": 1,\n  \"timeout\": 300000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command"]
+            }
+          }
+        },
+        {
+          "name": "Send USB Command via General Endpoint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"usb_control\",\n  \"parameters\": {\n    \"action\": \"disable\",\n    \"reason\": \"Testing via general command endpoint\",\n    \"adminId\": \"507f1f77bcf86cd799439011\"\n  },\n  \"priority\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/command/agent/{{agentId}}/command",
+              "host": ["{{baseUrl}}"],
+              "path": ["command", "agent", "{{agentId}}", "command"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "USB Status & History",
+      "item": [
+        {
+          "name": "Get USB Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-status"]
+            }
+          }
+        },
+        {
+          "name": "Get USB History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-history?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agent Endpoints (Public)",
+      "item": [
+        {
+          "name": "Get Pending USB Commands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-commands",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-commands"]
+            }
+          }
+        },
+        {
+          "name": "Start USB Command Execution",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command/usb-A1B2C3D4/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command", "usb-A1B2C3D4", "start"]
+            }
+          }
+        },
+        {
+          "name": "Complete USB Command (Success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\",\n  \"result\": {\n    \"success\": true,\n    \"message\": \"USB devices disabled successfully\",\n    \"devicesAffected\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command/usb-A1B2C3D4/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command", "usb-A1B2C3D4", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Complete USB Command (Failed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"failed\",\n  \"error\": \"Permission denied - insufficient privileges\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command/usb-A1B2C3D4/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command", "usb-A1B2C3D4", "complete"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "item": [
+        {
+          "name": "Invalid Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"invalid_action\",\n  \"reason\": \"Testing invalid action\",\n  \"priority\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command"]
+            }
+          }
+        },
+        {
+          "name": "Missing Reason",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"disable\",\n  \"priority\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-command",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-command"]
+            }
+          }
+        },
+        {
+          "name": "Invalid Agent ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"disable\",\n  \"reason\": \"Testing with invalid agent\",\n  \"priority\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/invalid-agent-id/usb-command",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "invalid-agent-id", "usb-command"]
+            }
+          }
+        },
+        {
+          "name": "Unauthorized Access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usb/agent/{{agentId}}/usb-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["usb", "agent", "{{agentId}}", "usb-status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 

@@ -179,8 +179,8 @@ const commandValidation = {
       .notEmpty()
       .withMessage('Agent ID is required'),
     body('type')
-      .isIn(['shutdown', 'restart', 'sleep', 'hibernate', 'lock', 'unlock'])
-      .withMessage('Type must be one of: shutdown, restart, sleep, hibernate, lock, unlock'),
+      .isIn(['shutdown', 'restart', 'sleep', 'hibernate', 'lock', 'unlock', 'usb_control'])
+      .withMessage('Type must be one of: shutdown, restart, sleep, hibernate, lock, unlock, usb_control'),
     body('parameters')
       .optional()
       .isObject()
@@ -204,6 +204,33 @@ const commandValidation = {
             }
           }
         }
+        
+        // Special validation for usb_control commands
+        if (req.body.type === 'usb_control') {
+          const requiredKeys = ['action', 'reason', 'adminId'];
+          const providedKeys = Object.keys(parameters || {});
+          const missingKeys = requiredKeys.filter(key => !providedKeys.includes(key));
+          
+          if (missingKeys.length > 0) {
+            throw new Error(`For usb_control commands, the following parameters are required: ${missingKeys.join(', ')}`);
+          }
+          
+          // Validate action
+          if (!['enable', 'disable'].includes(parameters.action)) {
+            throw new Error('Action must be either "enable" or "disable"');
+          }
+          
+          // Validate reason
+          if (!parameters.reason || parameters.reason.trim().length === 0) {
+            throw new Error('Reason is required and cannot be empty');
+          }
+          
+          // Validate adminId
+          if (!parameters.adminId || parameters.adminId.trim().length === 0) {
+            throw new Error('Admin ID is required');
+          }
+        }
+        
         return true;
       }),
     body('priority')
@@ -218,6 +245,86 @@ const commandValidation = {
       .optional()
       .isInt({ min: 1000, max: 3600000 })
       .withMessage('Timeout must be between 1 second and 1 hour (in milliseconds)')
+  ]
+};
+
+// USB validation rules
+const usbValidation = {
+  getPendingUsbCommands: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required')
+  ],
+
+  startUsbCommand: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required'),
+    param('commandId')
+      .notEmpty()
+      .withMessage('Command ID is required')
+  ],
+
+  completeUsbCommand: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required'),
+    param('commandId')
+      .notEmpty()
+      .withMessage('Command ID is required'),
+    body('status')
+      .isIn(['completed', 'failed'])
+      .withMessage('Status must be either "completed" or "failed"'),
+    body('result')
+      .optional()
+      .isObject()
+      .withMessage('Result must be an object'),
+    body('error')
+      .optional()
+      .isLength({ max: 1000 })
+      .withMessage('Error message must be less than 1000 characters')
+  ],
+
+  sendUsbCommand: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required'),
+    body('action')
+      .isIn(['enable', 'disable'])
+      .withMessage('Action must be either "enable" or "disable"'),
+    body('reason')
+      .notEmpty()
+      .withMessage('Reason is required')
+      .isLength({ max: 500 })
+      .withMessage('Reason must be less than 500 characters'),
+    body('priority')
+      .optional()
+      .isInt({ min: 1, max: 10 })
+      .withMessage('Priority must be between 1 and 10'),
+    body('timeout')
+      .optional()
+      .isInt({ min: 1000, max: 3600000 })
+      .withMessage('Timeout must be between 1 second and 1 hour (in milliseconds)')
+  ],
+
+  getUsbStatus: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required')
+  ],
+
+  getUsbHistory: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required'),
+    query('page')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Page must be a positive integer'),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('Limit must be between 1 and 100')
   ]
 };
 
@@ -337,5 +444,6 @@ module.exports = {
   agentValidation,
   commandValidation,
   queryValidation,
-  lockdownValidation
+  lockdownValidation,
+  usbValidation
 }; 

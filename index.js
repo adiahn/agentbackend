@@ -19,6 +19,7 @@ const agentRoutes = require('./routes/agentRoutes');
 const activationRoutes = require('./routes/activationRoutes');
 const commandRoutes = require('./routes/commandRoutes');
 const lockdownRoutes = require('./routes/lockdownRoutes');
+const usbRoutes = require('./routes/usbRoutes');
 
 // Routes
 app.use('/api/admin', adminRoutes);
@@ -26,6 +27,7 @@ app.use('/api/agent', agentRoutes);
 app.use('/api/activation', activationRoutes);
 app.use('/api/command', commandRoutes);
 app.use('/api/lockdown', lockdownRoutes);
+app.use('/api/usb', usbRoutes);
 
 // Health check
 app.get('/', (req, res) => {
@@ -42,7 +44,8 @@ app.get('/', (req, res) => {
       'Enhanced Lockdown System with PIN',
       'Persistent Lockdown State',
       'Emergency Override',
-      'Audit Trail & History'
+      'Audit Trail & History',
+      'USB Control System'
     ]
   });
 });
@@ -59,7 +62,8 @@ app.get('/api/health', (req, res) => {
       agent: '/api/agent',
       activation: '/api/activation',
       command: '/api/command',
-      lockdown: '/api/lockdown'
+      lockdown: '/api/lockdown',
+      usb: '/api/usb'
     },
     features: [
       'Admin Authentication',
@@ -69,7 +73,8 @@ app.get('/api/health', (req, res) => {
       'Enhanced Lockdown System with PIN',
       'Persistent Lockdown State',
       'Emergency Override',
-      'Audit Trail & History'
+      'Audit Trail & History',
+      'USB Control System'
     ]
   });
 });
