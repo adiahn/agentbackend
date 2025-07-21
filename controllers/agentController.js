@@ -173,6 +173,65 @@ exports.getAllAgents = async (req, res) => {
   }
 };
 
+// Update agent information (PUT endpoint)
+exports.updateAgent = async (req, res) => {
+  try {
+    const { agentId } = req.params;
+    const { systemInfo, location, isActive, pcName, adminId, activationCode } = req.body;
+    
+    // Try to use database first
+    if (Agent.db.readyState === 1) {
+      const agent = await Agent.findOneAndUpdate(
+        { agentId },
+        { 
+          systemInfo, 
+          location, 
+          isActive,
+          pcName,
+          lastSeen: new Date() // Server timestamp when request is processed
+        },
+        { new: true }
+      );
+      
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      
+      return res.json({
+        success: true,
+        lastSeen: agent.lastSeen, // Server timestamp when request was processed
+        message: 'Agent info updated successfully'
+      });
+    } else {
+      // Fallback to in-memory storage
+      if (!fallbackAgents[agentId]) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      
+      const serverTimestamp = new Date();
+      fallbackAgents[agentId] = { 
+        ...fallbackAgents[agentId],
+        systemInfo, 
+        location, 
+        isActive,
+        pcName,
+        lastSeen: serverTimestamp // Server timestamp when request is processed
+      };
+      
+      return res.json({ 
+        success: true, 
+        lastSeen: serverTimestamp, // Server timestamp when request was processed
+        message: 'Agent info updated successfully',
+        source: 'memory',
+        warning: 'Database not available, using in-memory storage'
+      });
+    }
+  } catch (error) {
+    console.error('Update agent error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // Deactivate agent
 exports.deactivateAgent = async (req, res) => {
   try {

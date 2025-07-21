@@ -14,6 +14,7 @@ router.get('/:agentId/commands', commandValidation.getPendingCommands, commandCo
 // Protected routes (authentication required)
 router.get('/my-agents', authenticateToken, agentController.getMyAgents);
 router.get('/:agentId', authenticateToken, agentValidation.getAgent, agentController.getAgent);
+router.put('/:agentId', agentValidation.updateAgent, agentController.updateAgent);
 router.put('/deactivate/:agentId', authenticateToken, agentValidation.deactivateAgent, agentController.deactivateAgent);
 
 // Super admin only routes

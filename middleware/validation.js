@@ -106,6 +106,75 @@ const agentValidation = {
       .withMessage('Location must be an object')
   ],
   
+  updateAgent: [
+    param('agentId')
+      .notEmpty()
+      .withMessage('Agent ID is required'),
+    body('agentId')
+      .notEmpty()
+      .withMessage('Agent ID in body is required')
+      .custom((value, { req }) => {
+        if (value !== req.params.agentId) {
+          throw new Error('Agent ID in body must match URL parameter');
+        }
+        return true;
+      }),
+    body('pcName')
+      .notEmpty()
+      .withMessage('PC name is required'),
+    body('adminId')
+      .notEmpty()
+      .withMessage('Admin ID is required'),
+    body('activationCode')
+      .notEmpty()
+      .withMessage('Activation code is required'),
+    body('systemInfo')
+      .isObject()
+      .withMessage('System info must be an object')
+      .custom((systemInfo) => {
+        // Validate coordinates if present
+        if (systemInfo.coordinates) {
+          if (typeof systemInfo.coordinates.latitude !== 'number' || 
+              typeof systemInfo.coordinates.longitude !== 'number') {
+            throw new Error('Coordinates latitude and longitude must be numbers');
+          }
+          if (systemInfo.coordinates.latitude < -90 || systemInfo.coordinates.latitude > 90) {
+            throw new Error('Latitude must be between -90 and 90');
+          }
+          if (systemInfo.coordinates.longitude < -180 || systemInfo.coordinates.longitude > 180) {
+            throw new Error('Longitude must be between -180 and 180');
+          }
+        }
+        return true;
+      }),
+    body('location')
+      .isObject()
+      .withMessage('Location must be an object')
+      .custom((location) => {
+        // Validate coordinates if present
+        if (location.coordinates) {
+          if (typeof location.coordinates.latitude !== 'number' || 
+              typeof location.coordinates.longitude !== 'number') {
+            throw new Error('Location coordinates latitude and longitude must be numbers');
+          }
+          if (location.coordinates.latitude < -90 || location.coordinates.latitude > 90) {
+            throw new Error('Location latitude must be between -90 and 90');
+          }
+          if (location.coordinates.longitude < -180 || location.coordinates.longitude > 180) {
+            throw new Error('Location longitude must be between -180 and 180');
+          }
+        }
+        return true;
+      }),
+    body('isActive')
+      .isBoolean()
+      .withMessage('isActive must be a boolean'),
+    body('updateTimestamp')
+      .optional()
+      .isISO8601()
+      .withMessage('updateTimestamp must be a valid ISO 8601 date')
+  ],
+  
   getAgent: [
     param('agentId')
       .notEmpty()
