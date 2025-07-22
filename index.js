@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const CleanupService = require('./services/cleanupService');
+const mongoose = require('mongoose'); // Added for health check endpoint
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -31,55 +32,70 @@ app.use('/api/lockdown', lockdownRoutes);
 app.use('/api/usb', usbRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'SystemMonitor Backend is running',
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '2.0.0',
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
     features: [
-      'Admin Authentication',
-      'Activation Code Management',
       'Agent Management',
-      'JWT Security',
-      'Enhanced Lockdown System with PIN',
-      'Persistent Lockdown State',
-      'Emergency Override',
-      'Audit Trail & History',
-      'USB Control System'
-    ]
+      'Admin Authentication',
+      'Activation Code System',
+      'Lockdown System',
+      'USB Control',
+      'Command Management',
+      'Analytics Dashboard',
+      'Super Admin Analytics'
+    ],
+    endpoints: {
+      health: '/api/health',
+      admin: '/api/admin',
+      activation: '/api/activation',
+      agent: '/api/agent',
+      lockdown: '/api/lockdown',
+      usb: '/api/usb',
+      commands: '/api/commands',
+      analytics: '/api/analytics',
+      superAnalytics: '/api/analytics/super'
+    },
+    database: {
+      connected: mongoose.connection.readyState === 1,
+      status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    }
   });
 });
 
-// API Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    message: 'SystemMonitor Backend API is running',
-    status: 'healthy',
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'SystemMonitor Backend API',
+    version: '1.0.0',
+    status: 'running',
     timestamp: new Date().toISOString(),
-    version: '2.0.0',
-    endpoints: {
+    features: [
+      'Agent Management',
+      'Admin Authentication',
+      'Activation Code System',
+      'Lockdown System',
+      'USB Control',
+      'Command Management',
+      'Analytics Dashboard',
+      'Super Admin Analytics'
+    ],
+    documentation: {
+      health: '/api/health',
       admin: '/api/admin',
-      agent: '/api/agent',
       activation: '/api/activation',
-      command: '/api/command',
+      agent: '/api/agent',
       lockdown: '/api/lockdown',
       usb: '/api/usb',
-      analytics: '/api/analytics'
-    },
-    features: [
-      'Admin Authentication',
-      'Activation Code Management',
-      'Agent Management',
-      'JWT Security',
-      'Enhanced Lockdown System with PIN',
-      'Persistent Lockdown State',
-      'Emergency Override',
-      'Audit Trail & History',
-      'USB Control System',
-      'Analytics Dashboard'
-    ]
+      commands: '/api/commands',
+      analytics: '/api/analytics',
+      superAnalytics: '/api/analytics/super'
+    }
   });
 });
 
@@ -110,9 +126,9 @@ scheduleCleanup();
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Something went wrong!',
-    message: err.message 
+    message: err.message
   });
 });
 

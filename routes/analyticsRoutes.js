@@ -16,7 +16,6 @@ const analyticsValidation = {
       .isIn(['hourly', 'daily', 'weekly', 'monthly'])
       .withMessage('Granularity must be one of: hourly, daily, weekly, monthly')
   ],
-  
   performance: [
     query('period')
       .optional()
@@ -27,14 +26,12 @@ const analyticsValidation = {
       .isIn(['hourly', 'daily'])
       .withMessage('Granularity must be one of: hourly, daily')
   ],
-  
   commands: [
     query('period')
       .optional()
       .isIn(['24h', '7d', '30d'])
       .withMessage('Period must be one of: 24h, 7d, 30d')
   ],
-  
   topAgents: [
     query('metric')
       .optional()
@@ -45,14 +42,12 @@ const analyticsValidation = {
       .isInt({ min: 1, max: 50 })
       .withMessage('Limit must be between 1 and 50')
   ],
-  
   activationCodes: [
     query('period')
       .optional()
       .isIn(['7d', '30d', '90d'])
       .withMessage('Period must be one of: 7d, 30d, 90d')
   ],
-  
   alerts: [
     query('severity')
       .optional()
@@ -65,31 +60,63 @@ const analyticsValidation = {
   ]
 };
 
-// All analytics endpoints require authentication
-router.use(authenticateToken);
+// ========================================
+// SUPER ADMIN ANALYTICS ENDPOINTS
+// ========================================
+// All super admin endpoints require super admin authentication
+router.use('/super', requireSuperAdmin);
 
-// 1. Dashboard Overview Stats
-router.get('/overview', analyticsController.getOverview);
+// 1. Super Admin Dashboard Overview Stats
+router.get('/super/overview', analyticsController.getOverview);
 
-// 2. Agent Activity Trends
-router.get('/agent-activity', analyticsValidation.agentActivity, analyticsController.getAgentActivity);
+// 2. Super Admin Agent Activity Trends
+router.get('/super/agent-activity', analyticsValidation.agentActivity, analyticsController.getAgentActivity);
 
-// 3. System Performance Metrics
-router.get('/performance', analyticsValidation.performance, analyticsController.getPerformanceMetrics);
+// 3. Super Admin System Performance Metrics
+router.get('/super/performance', analyticsValidation.performance, analyticsController.getPerformanceMetrics);
 
-// 4. Geographic Distribution
-router.get('/geographic', analyticsController.getGeographicDistribution);
+// 4. Super Admin Geographic Distribution
+router.get('/super/geographic', analyticsController.getGeographicDistribution);
 
-// 5. Command Analytics
-router.get('/commands', analyticsValidation.commands, analyticsController.getCommandAnalytics);
+// 5. Super Admin Command Analytics
+router.get('/super/commands', analyticsValidation.commands, analyticsController.getCommandAnalytics);
 
-// 6. Top Agents Performance
-router.get('/top-agents', analyticsValidation.topAgents, analyticsController.getTopAgents);
+// 6. Super Admin Top Agents Performance
+router.get('/super/top-agents', analyticsValidation.topAgents, analyticsController.getTopAgents);
 
-// 7. Activation Code Analytics
-router.get('/activation-codes', analyticsValidation.activationCodes, analyticsController.getActivationCodeAnalytics);
+// 7. Super Admin Activation Code Analytics
+router.get('/super/activation-codes', analyticsValidation.activationCodes, analyticsController.getActivationCodeAnalytics);
 
-// 8. Alerts & Notifications
-router.get('/alerts', analyticsValidation.alerts, analyticsController.getAlerts);
+// 8. Super Admin Alerts & Notifications
+router.get('/super/alerts', analyticsValidation.alerts, analyticsController.getAlerts);
+
+// ========================================
+// REGULAR ADMIN ANALYTICS ENDPOINTS
+// ========================================
+// All admin endpoints require regular authentication (filtered by adminId)
+
+// 1. Admin Dashboard Overview Stats
+router.get('/overview', authenticateToken, analyticsController.getAdminOverview);
+
+// 2. Admin Agent Activity Trends
+router.get('/agent-activity', authenticateToken, analyticsValidation.agentActivity, analyticsController.getAdminAgentActivity);
+
+// 3. Admin Performance Metrics
+router.get('/performance', authenticateToken, analyticsValidation.performance, analyticsController.getAdminPerformanceMetrics);
+
+// 4. Admin Geographic Distribution
+router.get('/geographic', authenticateToken, analyticsController.getAdminGeographicDistribution);
+
+// 5. Admin Command Analytics
+router.get('/commands', authenticateToken, analyticsValidation.commands, analyticsController.getAdminCommandAnalytics);
+
+// 6. Admin Top Agents Performance
+router.get('/top-agents', authenticateToken, analyticsValidation.topAgents, analyticsController.getAdminTopAgents);
+
+// 7. Admin Activation Code Analytics
+router.get('/activation-codes', authenticateToken, analyticsValidation.activationCodes, analyticsController.getAdminActivationCodeAnalytics);
+
+// 8. Admin Alerts & Notifications
+router.get('/alerts', authenticateToken, analyticsValidation.alerts, analyticsController.getAdminAlerts);
 
 module.exports = router; 
