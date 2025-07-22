@@ -40,7 +40,6 @@ const ActivationCodeSchema = new mongoose.Schema({
 });
 
 // Index for faster queries
-ActivationCodeSchema.index({ code: 1 });
 ActivationCodeSchema.index({ adminId: 1 });
 ActivationCodeSchema.index({ expiresAt: 1 });
 

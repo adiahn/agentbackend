@@ -97,11 +97,10 @@ const LockdownStateSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-LockdownStateSchema.index({ agentId: 1 });
 LockdownStateSchema.index({ isLockedDown: 1 });
 LockdownStateSchema.index({ adminId: 1 });
-LockdownStateSchema.index({ 'securityChecks.lastCheckTime': 1 });
 LockdownStateSchema.index({ expiresAt: 1 });
+LockdownStateSchema.index({ 'securityChecks.lastCheckTime': 1 });
 
 // Methods
 LockdownStateSchema.methods.initiateLockdown = function(adminContactInfo, reason, unlockPin, expiresAt) {

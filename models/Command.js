@@ -74,7 +74,6 @@ CommandSchema.index({ agentId: 1, status: 1 });
 CommandSchema.index({ adminId: 1 });
 CommandSchema.index({ createdAt: 1 });
 CommandSchema.index({ scheduledFor: 1 });
-CommandSchema.index({ commandId: 1 });
 
 // Method to check if command is ready for execution
 CommandSchema.methods.isReadyForExecution = function() {

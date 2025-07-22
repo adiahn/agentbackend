@@ -25,7 +25,6 @@ const AgentSchema = new mongoose.Schema({
 
 // Index for faster queries
 AgentSchema.index({ adminId: 1 });
-AgentSchema.index({ agentId: 1 });
 AgentSchema.index({ lastSeen: 1 });
 
 module.exports = mongoose.model('Agent', AgentSchema); 

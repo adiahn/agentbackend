@@ -71,7 +71,6 @@ const UsbControlCommandSchema = new mongoose.Schema({
 UsbControlCommandSchema.index({ agentId: 1, status: 1 });
 UsbControlCommandSchema.index({ adminId: 1 });
 UsbControlCommandSchema.index({ createdAt: 1 });
-UsbControlCommandSchema.index({ commandId: 1 });
 
 // Method to check if command is ready for execution
 UsbControlCommandSchema.methods.isReadyForExecution = function() {

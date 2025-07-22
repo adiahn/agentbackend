@@ -37,9 +37,8 @@ const UsbStatusSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient queries
-UsbStatusSchema.index({ agentId: 1 });
-UsbStatusSchema.index({ isEnabled: 1 });
 UsbStatusSchema.index({ lastUpdated: 1 });
+UsbStatusSchema.index({ isEnabled: 1 });
 
 // Method to update USB status
 UsbStatusSchema.methods.updateStatus = function(isEnabled, commandId, action, reason, adminId) {

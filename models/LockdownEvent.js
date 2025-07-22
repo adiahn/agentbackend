@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const LockdownEventSchema = new mongoose.Schema({
   agentId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   eventType: {
     type: String,
