@@ -1874,22 +1874,22 @@ exports.getAdminAlerts = async (req, res) => {
 
 module.exports = {
   // Super admin endpoints (existing)
-  getOverview,
-  getAgentActivity,
-  getPerformanceMetrics,
-  getGeographicDistribution,
-  getCommandAnalytics,
-  getTopAgents,
-  getActivationCodeAnalytics,
-  getAlerts,
+  getOverview: exports.getOverview,
+  getAgentActivity: exports.getAgentActivity,
+  getPerformanceMetrics: exports.getPerformanceMetrics,
+  getGeographicDistribution: exports.getGeographicDistribution,
+  getCommandAnalytics: exports.getCommandAnalytics,
+  getTopAgents: exports.getTopAgents,
+  getActivationCodeAnalytics: exports.getActivationCodeAnalytics,
+  getAlerts: exports.getAlerts,
   
   // Admin-specific endpoints (new)
-  getAdminOverview,
-  getAdminAgentActivity,
-  getAdminPerformanceMetrics,
-  getAdminGeographicDistribution,
-  getAdminCommandAnalytics,
-  getAdminTopAgents,
-  getAdminActivationCodeAnalytics,
-  getAdminAlerts
+  getAdminOverview: exports.getAdminOverview,
+  getAdminAgentActivity: exports.getAdminAgentActivity,
+  getAdminPerformanceMetrics: exports.getAdminPerformanceMetrics,
+  getAdminGeographicDistribution: exports.getAdminGeographicDistribution,
+  getAdminCommandAnalytics: exports.getAdminCommandAnalytics,
+  getAdminTopAgents: exports.getAdminTopAgents,
+  getAdminActivationCodeAnalytics: exports.getAdminActivationCodeAnalytics,
+  getAdminAlerts: exports.getAdminAlerts
 }; 
