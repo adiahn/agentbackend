@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
-const { authenticateToken, requireSuperAdmin } = require('../middleware/auth');
-const { adminValidation } = require('../middleware/validation');
+const { authenticateToken, requireSuperAdmin, requireVerifiedAdmin } = require('../middleware/auth');
+const { adminValidation, validateAccessRequestRejection } = require('../middleware/validation');
 
 // Public routes (no authentication required)
 router.post('/register', adminValidation.register, adminController.registerAdmin);
@@ -15,5 +15,20 @@ router.put('/change-password', authenticateToken, adminValidation.changePassword
 
 // Super admin only routes
 router.get('/all', authenticateToken, requireSuperAdmin, adminController.getAllAdmins);
+
+// Request Access (public registration)
+router.post('/request-access', adminController.requestAccess);
+
+// Super admin endpoints for verification workflow
+router.get('/pending', authenticateToken, requireSuperAdmin, adminController.getPendingAdmins);
+router.post('/verify/:adminId', authenticateToken, requireSuperAdmin, adminController.verifyAdmin);
+router.post('/reject/:adminId', authenticateToken, requireSuperAdmin, adminController.rejectAdmin);
+
+// Access Request Management Routes (Admin Only)
+router.get('/access-requests', requireVerifiedAdmin, adminController.getAccessRequests);
+router.get('/access-requests/stats', requireVerifiedAdmin, adminController.getAccessRequestStats);
+router.get('/access-requests/:id', requireVerifiedAdmin, adminController.getAccessRequest);
+router.put('/access-requests/:id/approve', requireVerifiedAdmin, adminController.approveAccessRequest);
+router.put('/access-requests/:id/reject', requireVerifiedAdmin, validateAccessRequestRejection, adminController.rejectAccessRequest);
 
 module.exports = router; 

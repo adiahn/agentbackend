@@ -22,6 +22,7 @@ const commandRoutes = require('./routes/commandRoutes');
 const lockdownRoutes = require('./routes/lockdownRoutes');
 const usbRoutes = require('./routes/usbRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Routes
 app.use('/api/admin', adminRoutes);
@@ -31,6 +32,7 @@ app.use('/api/command', commandRoutes);
 app.use('/api/lockdown', lockdownRoutes);
 app.use('/api/usb', usbRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -1,49 +1,87 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const VerificationLogSchema = new mongoose.Schema({
+  action: { type: String, enum: ['requested', 'approved', 'rejected'], required: true },
+  by: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  at: { type: Date, default: Date.now },
+  note: String
+}, { _id: false });
+
 const AdminSchema = new mongoose.Schema({
-  username: { 
-    type: String, 
-    required: true, 
+  username: {
+    type: String,
     unique: true,
     trim: true,
     minlength: 3,
     maxlength: 30
   },
-  email: { 
-    type: String, 
-    required: true, 
+  email: {
+    type: String,
+    required: true,
     unique: true,
     lowercase: true,
     trim: true
   },
-  password: { 
-    type: String, 
+  password: {
+    type: String,
     required: true,
     minlength: 6
   },
-  role: { 
-    type: String, 
-    enum: ['admin', 'super_admin'], 
-    default: 'admin' 
+  role: {
+    type: String,
+    enum: ['admin', 'super_admin'],
+    default: 'admin'
   },
-  isActive: { 
-    type: Boolean, 
-    default: true 
+  isActive: {
+    type: Boolean,
+    default: true
   },
-  lastLogin: { 
-    type: Date 
+  lastLogin: {
+    type: Date
   },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  }
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  // New fields for request access flow
+  companyName: {
+    type: String,
+    required: true
+  },
+  businessRegNumber: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  businessDocument: {
+    type: String, // Cloudinary URL
+    required: true
+  },
+  nin: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  phone: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  verified: {
+    type: Boolean,
+    default: false
+  },
+  rejected: {
+    type: Boolean,
+    default: false
+  },
+  verificationLog: [VerificationLogSchema]
 });
 
 // Hash password before saving
 AdminSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);

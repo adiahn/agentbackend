@@ -1,15 +1,96 @@
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const Admin = require('../models/Admin');
+const cloudinary = require('../config/cloudinary');
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const path = require('path');
+const nodemailer = require('nodemailer');
+const AccessRequest = require('../models/AccessRequest');
+const { sendApprovalEmail, sendRejectionEmail } = require('./authController');
 
 // Generate JWT token
-const generateToken = (adminId) => {
+const generateToken = (admin) => {
   return jwt.sign(
-    { adminId },
+    { adminId: admin._id, verified: admin.verified, rejected: admin.rejected, role: admin.role },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
 };
+
+// Multer + Cloudinary storage config
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'admin_business_docs',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: 'auto',
+    public_id: (req, file) => {
+      return `${Date.now()}_${file.originalname.replace(/\s+/g, '_')}`;
+    }
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!['.jpg', '.jpeg', '.png', '.pdf'].includes(ext)) {
+      return cb(new Error('Only JPG, PNG, and PDF files are allowed'));
+    }
+    cb(null, true);
+  }
+});
+
+// Middleware to block unverified admins from protected endpoints
+exports.requireVerifiedAdmin = (req, res, next) => {
+  if (req.admin && req.admin.verified) return next();
+  return res.status(403).json({ error: 'Account not verified. Please wait for approval.' });
+};
+
+// Request Access (Registration) endpoint
+exports.requestAccess = [
+  upload.single('businessDocument'),
+  async (req, res) => {
+    try {
+      // Validate required fields
+      const { companyName, businessRegNumber, nin, phone, email, password } = req.body;
+      if (!companyName || !businessRegNumber || !nin || !phone || !email || !password || !req.file) {
+        return res.status(400).json({ error: 'All fields and business document are required.' });
+      }
+      // Check for duplicates
+      const duplicate = await Admin.findOne({
+        $or: [
+          { email },
+          { phone },
+          { businessRegNumber },
+          { nin }
+        ]
+      });
+      if (duplicate) {
+        return res.status(400).json({ error: 'An account with the same email, phone, NIN, or business registration number already exists.' });
+      }
+      // Save admin with Cloudinary URL
+      const admin = new Admin({
+        companyName,
+        businessRegNumber,
+        businessDocument: req.file.path,
+        nin,
+        phone,
+        email,
+        password,
+        verified: false,
+        rejected: false,
+        verificationLog: [{ action: 'requested' }]
+      });
+      await admin.save();
+      return res.status(201).json({ success: true, status: 'pending_verification' });
+    } catch (error) {
+      console.error('Request access error:', error);
+      res.status(500).json({ error: error.message || 'Server error' });
+    }
+  }
+];
 
 // Register new admin (only super admins can create other admins)
 exports.registerAdmin = async (req, res) => {
@@ -52,7 +133,7 @@ exports.registerAdmin = async (req, res) => {
     await admin.save();
 
     // Generate token
-    const token = generateToken(admin._id);
+    const token = generateToken(admin);
 
     res.status(201).json({
       message: 'Admin created successfully',
@@ -107,11 +188,11 @@ exports.loginAdmin = async (req, res) => {
     await admin.save();
 
     // Generate token
-    const token = generateToken(admin._id);
+    const token = generateToken(admin);
 
     res.json({
       message: 'Login successful',
-      admin: admin.toPublicJSON(),
+      admin: { ...admin.toPublicJSON(), verified: admin.verified, rejected: admin.rejected },
       token
     });
   } catch (error) {
@@ -211,4 +292,342 @@ exports.getAllAdmins = async (req, res) => {
     console.error('Get all admins error:', error);
     res.status(500).json({ error: 'Server error' });
   }
+};
+
+// List all pending admins (super admin only)
+exports.getPendingAdmins = async (req, res) => {
+  try {
+    const pending = await Admin.find({ verified: false, rejected: false }).select('-password');
+    res.json({ pending });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Email transporter (configure with your SMTP credentials)
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+// Helper to send email
+async function sendEmail(to, subject, text) {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || 'no-reply@velixify.com',
+    to,
+    subject,
+    text
+  });
+}
+
+// Approve admin (super admin only)
+exports.verifyAdmin = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.adminId);
+    if (!admin) return res.status(404).json({ error: 'Admin not found' });
+    if (admin.verified) return res.status(400).json({ error: 'Admin already verified' });
+    admin.verified = true;
+    admin.rejected = false;
+    admin.verificationLog.push({ action: 'approved', by: req.admin._id });
+    await admin.save();
+    // Send approval email
+    await sendEmail(
+      admin.email,
+      'Your Admin Account Has Been Approved',
+      `Hello ${admin.companyName},\n\nYour admin account has been approved. You can now access all dashboard features.\n\nBest regards,\nVelixify Team`
+    );
+    res.json({ success: true, message: 'Admin approved and notified.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Reject admin (super admin only)
+exports.rejectAdmin = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.params.adminId);
+    if (!admin) return res.status(404).json({ error: 'Admin not found' });
+    if (admin.rejected) return res.status(400).json({ error: 'Admin already rejected' });
+    admin.verified = false;
+    admin.rejected = true;
+    admin.verificationLog.push({ action: 'rejected', by: req.admin._id });
+    await admin.save();
+    // Send rejection email
+    await sendEmail(
+      admin.email,
+      'Your Admin Account Request Was Rejected',
+      `Hello ${admin.companyName},\n\nWe regret to inform you that your admin account request was rejected. Please contact support for more information.\n\nBest regards,\nVelixify Team`
+    );
+    res.json({ success: true, message: 'Admin rejected and notified.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Get all access requests (admin only)
+const getAccessRequests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+
+    let query = {};
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      query.status = status;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const accessRequests = await AccessRequest.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('-password -emailVerificationToken');
+
+    const total = await AccessRequest.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        requests: accessRequests,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalRequests: total,
+          hasNextPage: skip + accessRequests.length < total,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get access requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get single access request (admin only)
+const getAccessRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const accessRequest = await AccessRequest.findById(id)
+      .select('-password -emailVerificationToken');
+
+    if (!accessRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Access request not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: accessRequest
+    });
+
+  } catch (error) {
+    console.error('Get access request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Approve access request (admin only)
+const approveAccessRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin.id;
+
+    const accessRequest = await AccessRequest.findById(id);
+
+    if (!accessRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Access request not found'
+      });
+    }
+
+    if (accessRequest.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Access request is not pending'
+      });
+    }
+
+    // Check if email is verified
+    if (!accessRequest.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email must be verified before approval'
+      });
+    }
+
+    // Create admin account from access request
+    const admin = new Admin({
+      username: accessRequest.email.split('@')[0], // Use email prefix as username
+      email: accessRequest.email,
+      password: accessRequest.password, // Password is already hashed
+      role: 'admin',
+      companyName: accessRequest.companyName,
+      businessRegNumber: accessRequest.businessRegNumber,
+      nin: accessRequest.nin,
+      phone: accessRequest.phone
+    });
+
+    await admin.save();
+
+    // Update access request status
+    accessRequest.status = 'approved';
+    accessRequest.approvedBy = adminId;
+    accessRequest.approvedAt = new Date();
+    await accessRequest.save();
+
+    // Send approval email
+    await sendApprovalEmail(accessRequest.email, accessRequest.companyName);
+
+    res.status(200).json({
+      success: true,
+      message: 'Access request approved successfully',
+      data: {
+        requestId: accessRequest._id,
+        adminId: admin._id,
+        email: accessRequest.email,
+        companyName: accessRequest.companyName
+      }
+    });
+
+  } catch (error) {
+    console.error('Approve access request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Reject access request (admin only)
+const rejectAccessRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const adminId = req.admin.id;
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rejection reason is required'
+      });
+    }
+
+    const accessRequest = await AccessRequest.findById(id);
+
+    if (!accessRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Access request not found'
+      });
+    }
+
+    if (accessRequest.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Access request is not pending'
+      });
+    }
+
+    // Update access request status
+    accessRequest.status = 'rejected';
+    accessRequest.rejectionReason = reason.trim();
+    accessRequest.approvedBy = adminId;
+    accessRequest.approvedAt = new Date();
+    await accessRequest.save();
+
+    // Send rejection email
+    await sendRejectionEmail(accessRequest.email, accessRequest.companyName, reason);
+
+    res.status(200).json({
+      success: true,
+      message: 'Access request rejected successfully',
+      data: {
+        requestId: accessRequest._id,
+        email: accessRequest.email,
+        companyName: accessRequest.companyName,
+        rejectionReason: reason
+      }
+    });
+
+  } catch (error) {
+    console.error('Reject access request error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get access request statistics (admin only)
+const getAccessRequestStats = async (req, res) => {
+  try {
+    const [pending, approved, rejected, total] = await Promise.all([
+      AccessRequest.countDocuments({ status: 'pending' }),
+      AccessRequest.countDocuments({ status: 'approved' }),
+      AccessRequest.countDocuments({ status: 'rejected' }),
+      AccessRequest.countDocuments()
+    ]);
+
+    // Get recent requests (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentRequests = await AccessRequest.countDocuments({
+      createdAt: { $gte: sevenDaysAgo }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        pending,
+        approved,
+        rejected,
+        total,
+        recentRequests,
+        approvalRate: total > 0 ? ((approved / total) * 100).toFixed(2) : 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Get access request stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+module.exports = {
+  requireVerifiedAdmin,
+  requestAccess,
+  registerAdmin,
+  loginAdmin,
+  getProfile,
+  updateProfile,
+  changePassword,
+  getAllAdmins,
+  getPendingAdmins,
+  verifyAdmin,
+  rejectAdmin,
+  getAccessRequests,
+  getAccessRequest,
+  approveAccessRequest,
+  rejectAccessRequest,
+  getAccessRequestStats
 }; 

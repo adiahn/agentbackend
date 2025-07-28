@@ -507,6 +507,94 @@ const lockdownValidation = {
   ]
 };
 
+// Access request validation
+const validateAccessRequest = [
+  body('companyName')
+    .trim()
+    .notEmpty()
+    .withMessage('Company name is required')
+    .isLength({ max: 100 })
+    .withMessage('Company name cannot exceed 100 characters'),
+  
+  body('businessRegNumber')
+    .trim()
+    .notEmpty()
+    .withMessage('Business registration number is required')
+    .isLength({ max: 50 })
+    .withMessage('Business registration number cannot exceed 50 characters'),
+  
+  body('nin')
+    .trim()
+    .notEmpty()
+    .withMessage('NIN is required')
+    .isLength({ min: 8, max: 20 })
+    .withMessage('NIN must be between 8 and 20 characters'),
+  
+  body('phone')
+    .trim()
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .isLength({ min: 7, max: 15 })
+    .withMessage('Phone number must be between 7 and 15 characters'),
+  
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please enter a valid email address')
+    .normalizeEmail(),
+  
+  body('password')
+    .trim()
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+  
+  body('confirmPassword')
+    .trim()
+    .notEmpty()
+    .withMessage('Password confirmation is required'),
+  
+  body('terms')
+    .notEmpty()
+    .withMessage('You must accept the terms and conditions')
+    .custom((value) => {
+      if (value !== 'true') {
+        throw new Error('You must accept the terms and conditions');
+      }
+      return true;
+    })
+];
+
+// Email verification validation
+const validateEmailVerification = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('Verification token is required')
+];
+
+// Access request approval validation
+const validateAccessRequestApproval = [
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Reason cannot exceed 500 characters')
+];
+
+// Access request rejection validation
+const validateAccessRequestRejection = [
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('Rejection reason is required')
+    .isLength({ max: 500 })
+    .withMessage('Rejection reason cannot exceed 500 characters')
+];
+
 module.exports = {
   adminValidation,
   activationCodeValidation,
@@ -514,5 +602,9 @@ module.exports = {
   commandValidation,
   queryValidation,
   lockdownValidation,
-  usbValidation
+  usbValidation,
+  validateAccessRequest,
+  validateEmailVerification,
+  validateAccessRequestApproval,
+  validateAccessRequestRejection
 }; 

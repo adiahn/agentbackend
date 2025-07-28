@@ -1,173 +1,190 @@
-# V-Agent Server
+# SystemMonitor Backend API
 
-Backend server for the V-Agent application that handles admin authentication, agent management, and activation code system.
+A comprehensive backend API for system monitoring, agent management, and device control.
 
 ## Features
 
-- **Admin Authentication System**
-  - Secure JWT-based authentication
-  - Role-based access control (admin/super_admin)
-  - Password hashing with bcrypt
-  - Account management and profile updates
+- **Agent Management**: Register and manage system monitoring agents
+- **Admin Authentication**: Secure admin login and authorization
+- **Activation Code System**: Generate and validate activation codes
+- **Lockdown System**: Remote device lockdown capabilities
+- **USB Control**: Manage USB device access
+- **Command Management**: Send and track remote commands
+- **Analytics Dashboard**: Comprehensive system analytics
+- **Super Admin Analytics**: Advanced analytics for super admins
 
-- **Activation Code System**
-  - Generate unique 8-character activation codes
-  - Link agents to specific admins
-  - Code expiration and usage tracking
-  - Secure agent registration process
+## Quick Start
 
-- **Agent Management**
-  - Agent status reporting and tracking
-  - System information collection
-  - Location tracking
-  - Admin-specific agent views
+### Local Development
 
-- **Security Features**
-  - Input validation with express-validator
-  - JWT token authentication
-  - Role-based authorization
-  - CORS enabled for cross-origin requests
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd server
+   ```
 
-## Setup
-
-1. **Install dependencies:**
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. **Environment Configuration:**
-   Create a `.env` file in the server directory with the following variables:
-   ```
-   PORT=4000
-   NODE_ENV=development
-   MONGO_URI=mongodb://localhost:27017/v-agent
-   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-   ```
-
-3. **Database Setup:**
-   - Install MongoDB locally, or
-   - Use MongoDB Atlas (update MONGO_URI in .env)
-
-4. **Create Super Admin:**
+3. **Set up environment variables**
    ```bash
-   npm run create-admin
+   cp env.example .env
+   # Edit .env with your configuration
    ```
-   This creates the first super admin account:
-   - Username: `superadmin`
-   - Email: `admin@v-agent.com`
-   - Password: `admin123456`
 
-5. **Start the server:**
+4. **Start the development server**
    ```bash
-   # Production
-   npm start
-   
-   # Development (with auto-restart)
    npm run dev
    ```
 
-## API Endpoints
+5. **Create a super admin (optional)**
+   ```bash
+   npm run create-admin
+   ```
 
-### Health Check
-- **GET** `/` - Server health status
+### Vercel Deployment
 
-### Admin Authentication
-- **POST** `/api/admin/register` - Register new admin (super admin only)
-- **POST** `/api/admin/login` - Admin login
-- **GET** `/api/admin/profile` - Get admin profile (authenticated)
-- **PUT** `/api/admin/profile` - Update admin profile (authenticated)
-- **PUT** `/api/admin/change-password` - Change password (authenticated)
-- **GET** `/api/admin/all` - Get all admins (super admin only)
+This project is configured for easy deployment on Vercel.
 
-### Activation Codes
-- **POST** `/api/activation/generate` - Generate activation codes (authenticated)
-- **GET** `/api/activation/my-codes` - Get admin's activation codes (authenticated)
-- **GET** `/api/activation/code/:codeId` - Get specific activation code (authenticated)
-- **PUT** `/api/activation/deactivate/:codeId` - Deactivate activation code (authenticated)
-- **POST** `/api/activation/use` - Use activation code (public - for agent registration)
-- **GET** `/api/activation/all` - Get all activation codes (super admin only)
+#### Prerequisites
 
-### Agent Management
-- **POST** `/api/agent/report` - Report agent status (public)
-- **GET** `/api/my-agents` - Get admin's agents (authenticated)
-- **GET** `/api/agent/:agentId` - Get specific agent (authenticated)
-- **PUT** `/api/deactivate/:agentId` - Deactivate agent (authenticated)
-- **GET** `/api/agents` - Get all agents (super admin only)
+1. **MongoDB Atlas Database**
+   - Create a MongoDB Atlas account
+   - Set up a new cluster
+   - Get your connection string
 
-## Authentication
+2. **Cloudinary Account** (for file uploads)
+   - Create a Cloudinary account
+   - Get your cloud name, API key, and secret
 
-All protected endpoints require a JWT token in the Authorization header:
+3. **Vercel Account**
+   - Sign up at [vercel.com](https://vercel.com)
+
+#### Deployment Steps
+
+1. **Push your code to GitHub**
+   ```bash
+   git add .
+   git commit -m "Prepare for Vercel deployment"
+   git push origin main
+   ```
+
+2. **Deploy to Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Click "New Project"
+   - Import your GitHub repository
+   - Vercel will automatically detect the Node.js configuration
+
+3. **Configure Environment Variables**
+   In your Vercel project dashboard:
+   - Go to Settings → Environment Variables
+   - Add the following variables:
+     ```
+     MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/systemmonitor
+     JWT_SECRET=your-super-secret-jwt-key-here
+     JWT_EXPIRE=24h
+     CLOUDINARY_CLOUD_NAME=your-cloud-name
+     CLOUDINARY_API_KEY=your-api-key
+     CLOUDINARY_API_SECRET=your-api-secret
+     NODE_ENV=production
+     ```
+
+4. **Redeploy**
+   - After adding environment variables, redeploy your project
+   - Vercel will automatically rebuild with the new configuration
+
+#### API Endpoints
+
+Once deployed, your API will be available at:
+- **Production**: `https://your-project-name.vercel.app`
+- **Health Check**: `https://your-project-name.vercel.app/api/health`
+- **API Documentation**: `https://your-project-name.vercel.app/`
+
+## API Documentation
+
+### Core Endpoints
+
+- `GET /` - API information and documentation
+- `GET /api/health` - Health check and system status
+- `POST /api/admin/login` - Admin authentication
+- `POST /api/agent/register` - Agent registration
+- `POST /api/activation/generate` - Generate activation codes
+- `POST /api/lockdown/trigger` - Trigger device lockdown
+- `GET /api/analytics/dashboard` - Analytics dashboard data
+
+### Authentication
+
+Most endpoints require JWT authentication. Include the token in the Authorization header:
 ```
 Authorization: Bearer <your-jwt-token>
 ```
 
-## Workflow
+## Environment Variables
 
-1. **Admin Setup:**
-   - Create super admin account
-   - Login to get JWT token
-   - Generate activation codes
-
-2. **Agent Registration:**
-   - Agent uses activation code to register
-   - Agent gets linked to specific admin
-   - Agent can start reporting status
-
-3. **Management:**
-   - Admin can view their agents
-   - Admin can manage activation codes
-   - Super admin can view all data
-
-## Project Structure
-
-```
-server/
-├── config/
-│   └── db.js              # Database connection
-├── controllers/
-│   ├── adminController.js     # Admin business logic
-│   ├── agentController.js     # Agent business logic
-│   └── activationController.js # Activation code logic
-├── middleware/
-│   ├── auth.js            # Authentication middleware
-│   └── validation.js      # Input validation
-├── models/
-│   ├── Admin.js           # Admin data model
-│   ├── Agent.js           # Agent data model
-│   └── ActivationCode.js  # Activation code model
-├── routes/
-│   ├── adminRoutes.js     # Admin API routes
-│   ├── agentRoutes.js     # Agent API routes
-│   └── activationRoutes.js # Activation code routes
-├── scripts/
-│   └── createSuperAdmin.js # Initial setup script
-├── index.js               # Main server file
-├── package.json           # Dependencies
-└── README.md              # This file
-```
-
-## Dependencies
-
-- **express** - Web framework
-- **mongoose** - MongoDB ODM
-- **bcryptjs** - Password hashing
-- **jsonwebtoken** - JWT authentication
-- **express-validator** - Input validation
-- **cors** - Cross-origin resource sharing
-- **dotenv** - Environment variables
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `MONGO_URI` | MongoDB connection string | Yes |
+| `JWT_SECRET` | Secret key for JWT tokens | Yes |
+| `JWT_EXPIRE` | JWT token expiration time | No (default: 24h) |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | Yes |
+| `CLOUDINARY_API_KEY` | Cloudinary API key | Yes |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret | Yes |
+| `NODE_ENV` | Environment (development/production) | No |
+| `PORT` | Server port | No (default: 4000) |
 
 ## Development
 
-The server uses a typical MVC (Model-View-Controller) architecture:
-- **Models**: Define data schemas and database interactions
-- **Controllers**: Handle business logic and request/response
-- **Routes**: Define API endpoints and HTTP methods
-- **Middleware**: Authentication and validation
+### Scripts
 
-## Security Notes
+- `npm start` - Start production server
+- `npm run dev` - Start development server with nodemon
+- `npm test` - Run API tests
+- `npm run test:commands` - Test command system
+- `npm run create-admin` - Create super admin user
 
-- Change the default super admin password after first login
-- Use a strong JWT_SECRET in production
-- Enable HTTPS in production
-- Regularly rotate activation codes
-- Monitor for suspicious activity 
+### Project Structure
+
+```
+server/
+├── api/                 # Vercel serverless entry point
+├── config/             # Configuration files
+├── controllers/        # Route controllers
+├── middleware/         # Express middleware
+├── models/            # MongoDB models
+├── routes/            # API routes
+├── services/          # Business logic services
+├── scripts/           # Utility scripts
+├── vercel.json        # Vercel configuration
+└── index.js           # Local development entry point
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **MongoDB Connection Failed**
+   - Check your `MONGO_URI` environment variable
+   - Ensure your MongoDB Atlas cluster is accessible
+   - Verify network access settings
+
+2. **JWT Authentication Errors**
+   - Ensure `JWT_SECRET` is set and consistent
+   - Check token expiration settings
+
+3. **Vercel Deployment Issues**
+   - Verify all environment variables are set in Vercel dashboard
+   - Check Vercel function logs for errors
+   - Ensure `vercel.json` is properly configured
+
+### Support
+
+For issues and questions:
+- Check the health endpoint: `/api/health`
+- Review Vercel deployment logs
+- Ensure all environment variables are properly configured
+
+## License
+
+ISC License 
