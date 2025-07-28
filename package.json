@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node test-api.js",
     "test:commands": "node test-commands.js",
+    "test:imports": "node test-imports.js",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "create-admin": "node scripts/createSuperAdmin.js",

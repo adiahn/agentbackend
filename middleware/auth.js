@@ -5,7 +5,7 @@ const Admin = require('../models/Admin');
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1]; 
 
     if (!token) {
       return res.status(401).json({ error: 'Access token required' });
@@ -55,8 +55,15 @@ const canAccessResource = (resourceAdminId) => {
   };
 };
 
+// Middleware to require verified admin
+const requireVerifiedAdmin = (req, res, next) => {
+  if (req.admin && req.admin.verified) return next();
+  return res.status(403).json({ error: 'Account not verified. Please wait for approval.' });
+};
+
 module.exports = {
   authenticateToken,
   requireSuperAdmin,
-  canAccessResource
+  canAccessResource,
+  requireVerifiedAdmin
 }; 

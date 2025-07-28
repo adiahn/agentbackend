@@ -5,7 +5,6 @@ const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
-const nodemailer = require('nodemailer');
 const AccessRequest = require('../models/AccessRequest');
 const { sendApprovalEmail, sendRejectionEmail } = require('./authController');
 
