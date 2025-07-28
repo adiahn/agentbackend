@@ -1,190 +1,166 @@
-# SystemMonitor Backend API
+# Velixify Backend Server
 
-A comprehensive backend API for system monitoring, agent management, and device control.
+A comprehensive Node.js backend server for the Velixify system, featuring agent management, access request system, lockdown controls, USB management, and analytics.
 
-## Features
+## 🚀 Quick Start
 
-- **Agent Management**: Register and manage system monitoring agents
-- **Admin Authentication**: Secure admin login and authorization
-- **Activation Code System**: Generate and validate activation codes
-- **Lockdown System**: Remote device lockdown capabilities
-- **USB Control**: Manage USB device access
-- **Command Management**: Send and track remote commands
-- **Analytics Dashboard**: Comprehensive system analytics
-- **Super Admin Analytics**: Advanced analytics for super admins
+### Prerequisites
+- Node.js >= 18.0.0
+- MongoDB database
+- Cloudinary account (for file uploads)
 
-## Quick Start
-
-### Local Development
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd server
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Create a super admin (optional)**
-   ```bash
-   npm run create-admin
-   ```
-
-### Vercel Deployment
-
-This project is configured for easy deployment on Vercel.
-
-#### Prerequisites
-
-1. **MongoDB Atlas Database**
-   - Create a MongoDB Atlas account
-   - Set up a new cluster
-   - Get your connection string
-
-2. **Cloudinary Account** (for file uploads)
-   - Create a Cloudinary account
-   - Get your cloud name, API key, and secret
-
-3. **Vercel Account**
-   - Sign up at [vercel.com](https://vercel.com)
-
-#### Deployment Steps
-
-1. **Push your code to GitHub**
-   ```bash
-   git add .
-   git commit -m "Prepare for Vercel deployment"
-   git push origin main
-   ```
-
-2. **Deploy to Vercel**
-   - Go to [vercel.com](https://vercel.com)
-   - Click "New Project"
-   - Import your GitHub repository
-   - Vercel will automatically detect the Node.js configuration
-
-3. **Configure Environment Variables**
-   In your Vercel project dashboard:
-   - Go to Settings → Environment Variables
-   - Add the following variables:
-     ```
-     MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/systemmonitor
-     JWT_SECRET=your-super-secret-jwt-key-here
-     JWT_EXPIRE=24h
-     CLOUDINARY_CLOUD_NAME=your-cloud-name
-     CLOUDINARY_API_KEY=your-api-key
-     CLOUDINARY_API_SECRET=your-api-secret
-     NODE_ENV=production
-     ```
-
-4. **Redeploy**
-   - After adding environment variables, redeploy your project
-   - Vercel will automatically rebuild with the new configuration
-
-#### API Endpoints
-
-Once deployed, your API will be available at:
-- **Production**: `https://your-project-name.vercel.app`
-- **Health Check**: `https://your-project-name.vercel.app/api/health`
-- **API Documentation**: `https://your-project-name.vercel.app/`
-
-## API Documentation
-
-### Core Endpoints
-
-- `GET /` - API information and documentation
-- `GET /api/health` - Health check and system status
-- `POST /api/admin/login` - Admin authentication
-- `POST /api/agent/register` - Agent registration
-- `POST /api/activation/generate` - Generate activation codes
-- `POST /api/lockdown/trigger` - Trigger device lockdown
-- `GET /api/analytics/dashboard` - Analytics dashboard data
-
-### Authentication
-
-Most endpoints require JWT authentication. Include the token in the Authorization header:
-```
-Authorization: Bearer <your-jwt-token>
+### Installation
+```bash
+npm install
 ```
 
-## Environment Variables
+### Environment Setup
+Copy `env.example` to `.env` and configure your environment variables:
+```bash
+cp env.example .env
+```
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `MONGO_URI` | MongoDB connection string | Yes |
-| `JWT_SECRET` | Secret key for JWT tokens | Yes |
-| `JWT_EXPIRE` | JWT token expiration time | No (default: 24h) |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | Yes |
-| `CLOUDINARY_API_KEY` | Cloudinary API key | Yes |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret | Yes |
-| `NODE_ENV` | Environment (development/production) | No |
-| `PORT` | Server port | No (default: 4000) |
+### Development
+```bash
+npm run dev
+```
 
-## Development
+### Production
+```bash
+npm start
+```
 
-### Scripts
+## 📚 Documentation
 
-- `npm start` - Start production server
-- `npm run dev` - Start development server with nodemon
-- `npm test` - Run API tests
-- `npm run test:commands` - Test command system
-- `npm run create-admin` - Create super admin user
+All documentation has been organized in the `docs/` folder for better project structure:
 
-### Project Structure
+### 📋 **Core Documentation**
+- **[README.md](docs/README.md)** - Detailed setup and configuration guide
+- **[ACCESS_REQUEST_IMPLEMENTATION_REPORT.md](docs/ACCESS_REQUEST_IMPLEMENTATION_REPORT.md)** - Complete implementation report for the access request system
+
+### 🔧 **API Documentation**
+- **[ACCESS_REQUEST_API_DOCUMENTATION.md](docs/ACCESS_REQUEST_API_DOCUMENTATION.md)** - Access request system API endpoints
+- **[FRONTEND_API_DOCUMENTATION.md](docs/FRONTEND_API_DOCUMENTATION.md)** - Frontend integration guide
+
+### 🚀 **Deployment Guides**
+- **[VERCEL_DEPLOYMENT_GUIDE.md](docs/VERCEL_DEPLOYMENT_GUIDE.md)** - Step-by-step Vercel deployment guide
+- **[POSTMAN_SETUP.md](docs/POSTMAN_SETUP.md)** - Postman collection setup and testing
+
+### 🔒 **Security & Control Features**
+- **[AGENT_IMPLEMENTATION_GUIDE.md](docs/AGENT_IMPLEMENTATION_GUIDE.md)** - Agent system implementation guide
+- **[FRONTEND_LOCKDOWN_PIN_GUIDE.md](docs/FRONTEND_LOCKDOWN_PIN_GUIDE.md)** - Lockdown PIN system guide
+- **[PERSISTENT_LOCKDOWN_IMPLEMENTATION.md](docs/PERSISTENT_LOCKDOWN_IMPLEMENTATION.md)** - Persistent lockdown feature
+- **[POSTMAN_LOCKDOWN_TESTING.md](docs/POSTMAN_LOCKDOWN_TESTING.md)** - Lockdown system testing guide
+- **[USB_CONTROL_DOCUMENTATION.md](docs/USB_CONTROL_DOCUMENTATION.md)** - USB control system documentation
+
+### 📡 **System Features**
+- **[REMOTE_COMMANDS.md](docs/REMOTE_COMMANDS.md)** - Remote command execution system
+
+## 🏗️ Project Structure
 
 ```
 server/
-├── api/                 # Vercel serverless entry point
-├── config/             # Configuration files
-├── controllers/        # Route controllers
-├── middleware/         # Express middleware
-├── models/            # MongoDB models
-├── routes/            # API routes
-├── services/          # Business logic services
-├── scripts/           # Utility scripts
-├── vercel.json        # Vercel configuration
-└── index.js           # Local development entry point
+├── api/                    # Serverless entry point (Vercel)
+├── config/                 # Configuration files
+├── controllers/            # Route controllers
+├── docs/                   # 📚 All documentation
+├── middleware/             # Express middleware
+├── models/                 # Mongoose models
+├── routes/                 # API routes
+├── scripts/                # Utility scripts
+├── services/               # Business logic services
+├── test/                   # 🧪 Test files and utilities
+├── uploads/                # File upload directory
+├── index.js                # Main server file
+├── package.json            # Dependencies and scripts
+└── vercel.json            # Vercel configuration
 ```
 
-## Troubleshooting
+## 🌟 Key Features
 
-### Common Issues
+### ✅ **Access Request System**
+- Complete KYC workflow with document upload
+- Cloudinary integration for secure file storage
+- Email verification system
+- Role-based access control (Super Admin vs Regular Admin)
 
-1. **MongoDB Connection Failed**
-   - Check your `MONGO_URI` environment variable
-   - Ensure your MongoDB Atlas cluster is accessible
-   - Verify network access settings
+### ✅ **Agent Management**
+- Agent registration and activation
+- Real-time status monitoring
+- Command execution system
+- Analytics and reporting
 
-2. **JWT Authentication Errors**
-   - Ensure `JWT_SECRET` is set and consistent
-   - Check token expiration settings
+### ✅ **Security Features**
+- JWT authentication
+- Role-based authorization
+- File upload security
+- Input validation and sanitization
 
-3. **Vercel Deployment Issues**
-   - Verify all environment variables are set in Vercel dashboard
-   - Check Vercel function logs for errors
-   - Ensure `vercel.json` is properly configured
+### ✅ **Control Systems**
+- Lockdown system with PIN protection
+- USB device control
+- Remote command execution
+- Persistent state management
 
-### Support
+## 🔧 Available Scripts
 
-For issues and questions:
-- Check the health endpoint: `/api/health`
-- Review Vercel deployment logs
-- Ensure all environment variables are properly configured
+```bash
+# Development
+npm run dev              # Start development server
+npm test                 # Run API tests
 
-## License
+# Production
+npm start                # Start production server
+npm run build            # Build for deployment
 
-ISC License 
+# Admin Management
+npm run create-admin     # Create super admin account
+npm run create-adnan     # Create specific admin account
+npm run fix-admins       # Fix existing admin accounts
+
+# Testing
+npm run test             # Run main API tests
+npm run test:commands    # Test command system
+npm run test:lockdown    # Test lockdown system
+npm run test:usb         # Test USB control system
+npm run test:clear-usb   # Clear pending USB commands
+npm run test:create-admin # Create test admin account
+```
+
+## 🚀 Deployment
+
+### Render (Current)
+- **URL**: https://agentbackend-mde1.onrender.com
+- **Status**: ✅ Live and operational
+- **Features**: Complete access request system with Cloudinary integration
+
+### Vercel (Alternative)
+- Configured for serverless deployment
+- See `docs/VERCEL_DEPLOYMENT_GUIDE.md` for setup instructions
+
+## 📊 Health Check
+
+Check system status:
+```bash
+GET https://agentbackend-mde1.onrender.com/api/health
+```
+
+## 🤝 Contributing
+
+1. Follow the existing code structure
+2. Add comprehensive documentation for new features
+3. Test thoroughly before deployment
+4. Update relevant documentation in the `docs/` folder
+
+## 📞 Support
+
+For technical support or questions:
+- Check the documentation in the `docs/` folder
+- Review the API documentation for endpoint details
+- Test with the provided Postman collections
+
+---
+
+**Last Updated**: December 2024  
+**Version**: 1.0.0  
+**Status**: Production Ready ✅ 
