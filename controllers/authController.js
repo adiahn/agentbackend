@@ -113,18 +113,33 @@ const requestAccess = async (req, res) => {
     // Upload file to Cloudinary
     let uploadResult;
     try {
+      // Check if Cloudinary is configured
+      if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+        throw new Error('Cloudinary configuration is missing');
+      }
+
       const uniqueFilename = `business-docs/${uuidv4()}-${req.file.originalname}`;
       
-      uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      // Convert buffer to base64 for Cloudinary
+      const fileBuffer = req.file.buffer;
+      const base64File = `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`;
+      
+      uploadResult = await cloudinary.uploader.upload(base64File, {
         public_id: uniqueFilename,
         resource_type: 'auto',
         folder: 'systemmonitor/business-documents'
       });
     } catch (uploadError) {
       console.error('File upload error:', uploadError);
+      console.error('Error details:', {
+        message: uploadError.message,
+        code: uploadError.code,
+        status: uploadError.status
+      });
       return res.status(500).json({
         success: false,
-        message: 'File upload failed. Please try again.'
+        message: 'File upload failed. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
       });
     }
 
