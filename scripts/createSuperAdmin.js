@@ -23,7 +23,9 @@ const createSuperAdmin = async () => {
       username: 'superadmin',
       email: 'admin@systemmonitor.com',
       password: 'admin123456',
-      role: 'super_admin'
+      role: 'super_admin',
+      verified: true,
+      isActive: true
     });
 
     await superAdmin.save();

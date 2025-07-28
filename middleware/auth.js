@@ -61,9 +61,18 @@ const requireVerifiedAdmin = (req, res, next) => {
   return res.status(403).json({ error: 'Account not verified. Please wait for approval.' });
 };
 
+// Middleware to exclude super admin (regular admins only)
+const excludeSuperAdmin = (req, res, next) => {
+  if (req.admin && req.admin.role === 'super_admin') {
+    return res.status(403).json({ error: 'Super admin cannot perform this action. This feature is for regular admins only.' });
+  }
+  return next();
+};
+
 module.exports = {
   authenticateToken,
   requireSuperAdmin,
   canAccessResource,
-  requireVerifiedAdmin
+  requireVerifiedAdmin,
+  excludeSuperAdmin
 }; 

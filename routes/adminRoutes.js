@@ -23,11 +23,11 @@ router.get('/pending', authenticateToken, requireSuperAdmin, adminController.get
 router.post('/verify/:adminId', authenticateToken, requireSuperAdmin, adminController.verifyAdmin);
 router.post('/reject/:adminId', authenticateToken, requireSuperAdmin, adminController.rejectAdmin);
 
-// Access Request Management Routes (Admin Only)
-router.get('/access-requests', requireVerifiedAdmin, adminController.getAccessRequests);
-router.get('/access-requests/stats', requireVerifiedAdmin, adminController.getAccessRequestStats);
-router.get('/access-requests/:id', requireVerifiedAdmin, adminController.getAccessRequest);
-router.put('/access-requests/:id/approve', requireVerifiedAdmin, adminController.approveAccessRequest);
-router.put('/access-requests/:id/reject', requireVerifiedAdmin, validateAccessRequestRejection, adminController.rejectAccessRequest);
+// Access Request Management Routes (Super Admin Only)
+router.get('/access-requests', authenticateToken, requireSuperAdmin, adminController.getAccessRequests);
+router.get('/access-requests/stats', authenticateToken, requireSuperAdmin, adminController.getAccessRequestStats);
+router.get('/access-requests/:id', authenticateToken, requireSuperAdmin, adminController.getAccessRequest);
+router.put('/access-requests/:id/approve', authenticateToken, requireSuperAdmin, adminController.approveAccessRequest);
+router.put('/access-requests/:id/reject', authenticateToken, requireSuperAdmin, validateAccessRequestRejection, adminController.rejectAccessRequest);
 
 module.exports = router; 

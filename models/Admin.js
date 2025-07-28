@@ -44,29 +44,42 @@ const AdminSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  // New fields for request access flow
+  // Business fields (only required for regular admins, not super admin)
   companyName: {
     type: String,
-    required: true
+    required: function() {
+      return this.role === 'admin';
+    }
   },
   businessRegNumber: {
     type: String,
-    required: true,
-    unique: true
+    required: function() {
+      return this.role === 'admin';
+    },
+    unique: true,
+    sparse: true
   },
   businessDocument: {
     type: String, // Cloudinary URL
-    required: true
+    required: function() {
+      return this.role === 'admin';
+    }
   },
   nin: {
     type: String,
-    required: true,
-    unique: true
+    required: function() {
+      return this.role === 'admin';
+    },
+    unique: true,
+    sparse: true
   },
   phone: {
     type: String,
-    required: true,
-    unique: true
+    required: function() {
+      return this.role === 'admin';
+    },
+    unique: true,
+    sparse: true
   },
   verified: {
     type: Boolean,

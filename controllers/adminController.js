@@ -313,7 +313,7 @@ exports.rejectAdmin = async (req, res) => {
   }
 };
 
-// Get all access requests (admin only)
+// Get all access requests (super admin only)
 const getAccessRequests = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
@@ -356,7 +356,7 @@ const getAccessRequests = async (req, res) => {
   }
 };
 
-// Get single access request (admin only)
+// Get single access request (super admin only)
 const getAccessRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -385,7 +385,7 @@ const getAccessRequest = async (req, res) => {
   }
 };
 
-// Approve access request (admin only)
+// Approve access request (super admin only)
 const approveAccessRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -458,7 +458,7 @@ const approveAccessRequest = async (req, res) => {
   }
 };
 
-// Reject access request (admin only)
+// Reject access request (super admin only)
 const rejectAccessRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -518,7 +518,7 @@ const rejectAccessRequest = async (req, res) => {
   }
 };
 
-// Get access request statistics (admin only)
+// Get access request statistics (super admin only)
 const getAccessRequestStats = async (req, res) => {
   try {
     const [pending, approved, rejected, total] = await Promise.all([

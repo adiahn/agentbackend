@@ -9,6 +9,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "create-admin": "node scripts/createSuperAdmin.js",
+    "create-adnan": "node scripts/createAdnanAdmin.js",
+    "fix-admins": "node scripts/fixExistingAdmins.js",
     "build": "echo 'Build completed'",
     "vercel-build": "echo 'Vercel build completed'"
   },
