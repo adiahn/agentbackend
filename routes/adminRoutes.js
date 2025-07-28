@@ -16,8 +16,7 @@ router.put('/change-password', authenticateToken, adminValidation.changePassword
 // Super admin only routes
 router.get('/all', authenticateToken, requireSuperAdmin, adminController.getAllAdmins);
 
-// Request Access (public registration)
-router.post('/request-access', adminController.requestAccess);
+
 
 // Super admin endpoints for verification workflow
 router.get('/pending', authenticateToken, requireSuperAdmin, adminController.getPendingAdmins);

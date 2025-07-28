@@ -41,55 +41,9 @@ const upload = multer({
   }
 });
 
-// Middleware to block unverified admins from protected endpoints
-exports.requireVerifiedAdmin = (req, res, next) => {
-  if (req.admin && req.admin.verified) return next();
-  return res.status(403).json({ error: 'Account not verified. Please wait for approval.' });
-};
 
-// Request Access (Registration) endpoint
-exports.requestAccess = [
-  upload.single('businessDocument'),
-  async (req, res) => {
-    try {
-      // Validate required fields
-      const { companyName, businessRegNumber, nin, phone, email, password } = req.body;
-      if (!companyName || !businessRegNumber || !nin || !phone || !email || !password || !req.file) {
-        return res.status(400).json({ error: 'All fields and business document are required.' });
-      }
-      // Check for duplicates
-      const duplicate = await Admin.findOne({
-        $or: [
-          { email },
-          { phone },
-          { businessRegNumber },
-          { nin }
-        ]
-      });
-      if (duplicate) {
-        return res.status(400).json({ error: 'An account with the same email, phone, NIN, or business registration number already exists.' });
-      }
-      // Save admin with Cloudinary URL
-      const admin = new Admin({
-        companyName,
-        businessRegNumber,
-        businessDocument: req.file.path,
-        nin,
-        phone,
-        email,
-        password,
-        verified: false,
-        rejected: false,
-        verificationLog: [{ action: 'requested' }]
-      });
-      await admin.save();
-      return res.status(201).json({ success: true, status: 'pending_verification' });
-    } catch (error) {
-      console.error('Request access error:', error);
-      res.status(500).json({ error: error.message || 'Server error' });
-    }
-  }
-];
+
+
 
 // Register new admin (only super admins can create other admins)
 exports.registerAdmin = async (req, res) => {
@@ -303,25 +257,16 @@ exports.getPendingAdmins = async (req, res) => {
   }
 };
 
-// Email transporter (configure with your SMTP credentials)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-
-// Helper to send email
+// Email helper function (placeholder - implement with your email service)
 async function sendEmail(to, subject, text) {
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || 'no-reply@velixify.com',
-    to,
-    subject,
-    text
-  });
+  try {
+    // Implement email sending logic here
+    // You can use services like SendGrid, Nodemailer, etc.
+    console.log(`Sending email to ${to}: ${subject}`);
+    console.log(`Email content: ${text}`);
+  } catch (error) {
+    console.error('Email sending error:', error);
+  }
 }
 
 // Approve admin (super admin only)
@@ -613,17 +558,15 @@ const getAccessRequestStats = async (req, res) => {
 };
 
 module.exports = {
-  requireVerifiedAdmin,
-  requestAccess,
-  registerAdmin,
-  loginAdmin,
-  getProfile,
-  updateProfile,
-  changePassword,
-  getAllAdmins,
-  getPendingAdmins,
-  verifyAdmin,
-  rejectAdmin,
+  registerAdmin: exports.registerAdmin,
+  loginAdmin: exports.loginAdmin,
+  getProfile: exports.getProfile,
+  updateProfile: exports.updateProfile,
+  changePassword: exports.changePassword,
+  getAllAdmins: exports.getAllAdmins,
+  getPendingAdmins: exports.getPendingAdmins,
+  verifyAdmin: exports.verifyAdmin,
+  rejectAdmin: exports.rejectAdmin,
   getAccessRequests,
   getAccessRequest,
   approveAccessRequest,
