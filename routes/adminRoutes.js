@@ -15,6 +15,7 @@ router.put('/change-password', authenticateToken, adminValidation.changePassword
 
 // Super admin only routes
 router.get('/all', authenticateToken, requireSuperAdmin, adminController.getAllAdmins);
+router.get('/users', authenticateToken, requireSuperAdmin, adminController.getAllUsers);
 
 
 

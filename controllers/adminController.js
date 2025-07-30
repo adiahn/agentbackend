@@ -247,6 +247,139 @@ exports.getAllAdmins = async (req, res) => {
   }
 };
 
+// Get all users (admins + access requests) - super admin only
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { 
+      type, // 'all', 'admins', 'access_requests'
+      status, // 'all', 'pending', 'approved', 'rejected', 'verified', 'unverified'
+      page = 1, 
+      limit = 20,
+      search // search by email, company name, or username
+    } = req.query;
+
+    const skip = (page - 1) * limit;
+    const limitNum = parseInt(limit);
+
+    let admins = [];
+    let accessRequests = [];
+    let totalAdmins = 0;
+    let totalAccessRequests = 0;
+
+    // Build admin query
+    let adminQuery = {};
+    if (status && status !== 'all') {
+      if (status === 'verified') {
+        adminQuery.verified = true;
+        adminQuery.rejected = false;
+      } else if (status === 'unverified') {
+        adminQuery.verified = false;
+        adminQuery.rejected = false;
+      } else if (status === 'rejected') {
+        adminQuery.rejected = true;
+      }
+    }
+
+    // Build access request query
+    let accessRequestQuery = {};
+    if (status && status !== 'all') {
+      if (['pending', 'approved', 'rejected'].includes(status)) {
+        accessRequestQuery.status = status;
+      }
+    }
+
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      adminQuery.$or = [
+        { email: searchRegex },
+        { username: searchRegex },
+        { companyName: searchRegex }
+      ];
+      accessRequestQuery.$or = [
+        { email: searchRegex },
+        { companyName: searchRegex }
+      ];
+    }
+
+    // Fetch admins if requested
+    if (type !== 'access_requests') {
+      const adminResults = await Admin.find(adminQuery)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum);
+      
+      admins = adminResults.map(admin => ({
+        ...admin.toObject(),
+        userType: 'admin',
+        displayName: admin.companyName || admin.username || admin.email,
+        status: admin.rejected ? 'rejected' : (admin.verified ? 'verified' : 'pending')
+      }));
+
+      totalAdmins = await Admin.countDocuments(adminQuery);
+    }
+
+    // Fetch access requests if requested
+    if (type !== 'admins') {
+      const accessRequestResults = await AccessRequest.find(accessRequestQuery)
+        .select('-password -emailVerificationToken')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum);
+
+      accessRequests = accessRequestResults.map(request => ({
+        ...request.toObject(),
+        userType: 'access_request',
+        displayName: request.companyName || request.email,
+        status: request.status
+      }));
+
+      totalAccessRequests = await AccessRequest.countDocuments(accessRequestQuery);
+    }
+
+    // Combine and sort results
+    let allUsers = [...admins, ...accessRequests];
+    allUsers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Apply pagination to combined results
+    const startIndex = skip;
+    const endIndex = startIndex + limitNum;
+    const paginatedUsers = allUsers.slice(startIndex, endIndex);
+
+    const totalUsers = totalAdmins + totalAccessRequests;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users: paginatedUsers,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalUsers / limitNum),
+          totalUsers,
+          totalAdmins,
+          totalAccessRequests,
+          hasNextPage: endIndex < totalUsers,
+          hasPrevPage: page > 1
+        },
+        filters: {
+          type: type || 'all',
+          status: status || 'all',
+          search: search || null
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch users',
+      details: error.message 
+    });
+  }
+};
+
 // List all pending admins (super admin only)
 exports.getPendingAdmins = async (req, res) => {
   try {
@@ -564,6 +697,7 @@ module.exports = {
   updateProfile: exports.updateProfile,
   changePassword: exports.changePassword,
   getAllAdmins: exports.getAllAdmins,
+  getAllUsers: exports.getAllUsers,
   getPendingAdmins: exports.getPendingAdmins,
   verifyAdmin: exports.verifyAdmin,
   rejectAdmin: exports.rejectAdmin,
