@@ -136,9 +136,14 @@ exports.loginAdmin = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Update last login
+    // Update last login (with error handling for validation issues)
     admin.lastLogin = new Date();
-    await admin.save();
+    try {
+      await admin.save();
+    } catch (saveError) {
+      console.error('Error updating last login:', saveError);
+      // Continue with login even if save fails (don't block login)
+    }
 
     // Generate token
     const token = generateToken(admin);
