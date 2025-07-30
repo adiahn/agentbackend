@@ -54,8 +54,25 @@ const getAgentStatus = (agent) => {
 exports.getOverview = async (req, res) => {
   try {
     const data = await getCachedData('overview', async () => {
-      // Get all agents
-      const agents = await Agent.find({}).lean();
+      // Get all agents with error handling
+      let agents = [];
+      try {
+        agents = await Agent.find({}).lean();
+      } catch (dbError) {
+        console.error('Database query error in getOverview:', dbError);
+        return {
+          totalAgents: 0,
+          activeAgents: 0,
+          delayedAgents: 0,
+          offlineAgents: 0,
+          averageCpuUsage: 0,
+          averageMemoryUsage: 0,
+          averageDiskUsage: 0,
+          topAgent: null,
+          recentActivity: [],
+          systemHealth: 'unknown'
+        };
+      }
       
       // Calculate agent status distribution
       let activeAgents = 0;
@@ -645,9 +662,19 @@ exports.getTopAgents = async (req, res) => {
     const cacheKey = `top-agents-${metric}-${limitNum}`;
     
     const data = await getCachedData(cacheKey, async () => {
-      let agents = await Agent.find({
-        systemInfo: { $exists: true }
-      }).lean();
+      let agents = [];
+      try {
+        agents = await Agent.find({
+          systemInfo: { $exists: true }
+        }).lean();
+      } catch (dbError) {
+        console.error('Database query error in getTopAgents:', dbError);
+        return {
+          agents: [],
+          metric: metric,
+          total: 0
+        };
+      }
       
       // Sort agents based on metric
       switch (metric) {
@@ -669,14 +696,20 @@ exports.getTopAgents = async (req, res) => {
           break;
         case 'commands':
           // Get command counts for each agent
-          const commandCounts = await Command.aggregate([
-            {
-              $group: {
-                _id: '$agentId',
-                count: { $sum: 1 }
+          let commandCounts = [];
+          try {
+            commandCounts = await Command.aggregate([
+              {
+                $group: {
+                  _id: '$agentId',
+                  count: { $sum: 1 }
+                }
               }
-            }
-          ]);
+            ]);
+          } catch (cmdError) {
+            console.error('Command aggregation error in getTopAgents:', cmdError);
+            commandCounts = [];
+          }
           
           const commandMap = {};
           commandCounts.forEach(cmd => {
@@ -859,9 +892,22 @@ exports.getAlerts = async (req, res) => {
     
     const data = await getCachedData(`alerts-${severity || 'all'}-${limitNum}`, async () => {
       // Get agents with performance issues
-      const agents = await Agent.find({
-        systemInfo: { $exists: true }
-      }).lean();
+      let agents = [];
+      try {
+        agents = await Agent.find({
+          systemInfo: { $exists: true }
+        }).lean();
+      } catch (dbError) {
+        console.error('Database query error in getAlerts:', dbError);
+        return {
+          alerts: [],
+          total: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0
+        };
+      }
       
       const alerts = [];
       

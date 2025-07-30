@@ -32,6 +32,9 @@ const authenticateToken = async (req, res, next) => {
 
 // Middleware to check if admin is super admin
 const requireSuperAdmin = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
   if (req.admin.role !== 'super_admin') {
     return res.status(403).json({ error: 'Super admin access required' });
   }

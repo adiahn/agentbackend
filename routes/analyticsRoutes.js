@@ -64,7 +64,7 @@ const analyticsValidation = {
 // SUPER ADMIN ANALYTICS ENDPOINTS
 // ========================================
 // All super admin endpoints require super admin authentication
-router.use('/super', requireSuperAdmin);
+router.use('/super', authenticateToken, requireSuperAdmin);
 
 // 1. Super Admin Dashboard Overview Stats
 router.get('/super/overview', analyticsController.getOverview);
